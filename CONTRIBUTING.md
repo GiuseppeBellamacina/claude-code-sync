@@ -5,7 +5,7 @@ Thanks for helping! The project is intentionally small: three Node scripts (no d
 ## Ground rules
 
 - Keep the scripts dependency-free (Node standard library only).
-- Never overwrite user data on pull; never write secrets on push.
+- Pull must back up before changing anything and never remove data unless the user chose replace or answered remove; push must never write secrets.
 - Anything that can't be done with a plain `claude ...` command belongs in the agent instructions (`skills/*/SKILL.md`), not in the scripts.
 
 ## Develop
