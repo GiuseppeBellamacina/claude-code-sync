@@ -48,7 +48,7 @@ Also confirm by hand what the script cannot see: every command in `externals.md`
 
 ## 4. Report and checklist
 
-Write `<folder>/push-report.md` and show the same content to the user:
+Write `<folder>/push-report.md` with the full detail below, then show the user the compact chat version (see *Chat format* after the checklist):
 
 ```
 # Setup Sync, push report (<date>, <OS>)
@@ -64,4 +64,34 @@ Write `<folder>/push-report.md` and show the same content to the user:
 - [x] mods copied, their dependencies documented
 ```
 
-Tick a box only with evidence from the verify output or a command you ran; otherwise leave it `[ ]` with the reason. End with the folder path, a reminder that it can be moved to another machine (USB, cloud drive, private repo) before `/setup-sync:pull`, and a warning that it holds personal config: never put it in a public repo.
+Tick a box only with evidence from the verify output or a command you ran; otherwise leave it `[ ]` with the reason.
+### Chat format (what the user reads)
+
+The file is the full record; in chat give a compact, scannable version, not the file pasted. Use this shape, omitting any block that would be empty:
+
+```
+## Setup Sync · {push|pull} {✅ done | ⚠️ done with N issues | ❌ failed}
+`<folder>` · <date> · <OS>{ · mode: <mode>}
+
+| Synced | |
+| --- | --: |
+| Marketplaces | 3 |
+| Plugins | 19 |
+| ... one row per kind that has items | n |
+
+**Verification**
+| Check | Result |
+| --- | --- |
+| Snapshot matches this machine | ✅ 0 differences |
+| Secrets scan | ✅ 0 hits |
+| ... one row per check that ran | ✅ / ⚠️ / ❌ + a few words |
+
+**⚠️ Needs attention**
+- `<item>`: <reason>. Fix: <one line>
+
+**Next:** <the one thing to do now>
+```
+
+Rules: status emoji ✅ ⚠️ ❌ only; counts live in the table, not in prose; one line per issue, always with its fix; list kinds that have nothing in a single line ("None on this machine: skills, agents, mods"); never ✅ for something not verified (use ⚠️ and say why); no paragraphs, no repeating the checklist verbatim, end with the file path of the full report.
+
+End with the folder path, a reminder that it can be moved to another machine (USB, cloud drive, private repo) before `/setup-sync:pull`, and a warning that it holds personal config: never put it in a public repo.

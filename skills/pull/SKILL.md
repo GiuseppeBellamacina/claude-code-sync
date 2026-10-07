@@ -80,7 +80,7 @@ Then verify what the script cannot see, with real commands: each external tool f
 
 ## 6. Report and checklist
 
-Write `pull-report.md` into the backup folder (`~/.claude/backups/pre-sync-<timestamp>/`, so it survives deleting the sync folder) and show the same content to the user:
+Write `pull-report.md` into the backup folder (`~/.claude/backups/pre-sync-<timestamp>/`, so it survives deleting the sync folder) with the full detail below, then show the user the compact chat version (see *Chat format* after the checklist):
 
 ```
 # Setup Sync, pull report (<date>, <OS>, mode: overwrite|replace|ask)
@@ -101,7 +101,37 @@ Write `pull-report.md` into the backup folder (`~/.claude/backups/pre-sync-<time
 - [ ] new session started so MCP servers and mods load   <- always left for the user
 ```
 
-Tick a box only with evidence from the verify output or a command you ran; otherwise leave it `[ ]` with the reason. Remind that `/reload-plugins` applies plugin changes now, but new MCP servers and newly registered mods need a new session (mods load through `CLAUDE_CODE_PLUGIN_DIRS`, read at startup).
+Tick a box only with evidence from the verify output or a command you ran; otherwise leave it `[ ]` with the reason.
+### Chat format (what the user reads)
+
+The file is the full record; in chat give a compact, scannable version, not the file pasted. Use this shape, omitting any block that would be empty:
+
+```
+## Setup Sync · pull {✅ done | ⚠️ done with N issues | ❌ failed}
+`<folder>` · <date> · <OS>{ · mode: <mode>}
+
+| Synced | |
+| --- | --: |
+| Marketplaces | 3 |
+| Plugins | 19 |
+| ... one row per kind that has items | n |
+
+**Verification**
+| Check | Result |
+| --- | --- |
+| Snapshot matches this machine | ✅ 0 differences |
+| Secrets scan | ✅ 0 hits |
+| ... one row per check that ran | ✅ / ⚠️ / ❌ + a few words |
+
+**⚠️ Needs attention**
+- `<item>`: <reason>. Fix: <one line>
+
+**Next:** <the one thing to do now>
+```
+
+Rules: status emoji ✅ ⚠️ ❌ only; counts live in the table, not in prose; one line per issue, always with its fix; list kinds that have nothing in a single line ("None on this machine: skills, agents, mods"); never ✅ for something not verified (use ⚠️ and say why); no paragraphs, no repeating the checklist verbatim, end with the file path of the full report.
+
+Remind that `/reload-plugins` applies plugin changes now, but new MCP servers and newly registered mods need a new session (mods load through `CLAUDE_CODE_PLUGIN_DIRS`, read at startup).
 
 ## 7. Clean up
 
