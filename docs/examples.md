@@ -141,3 +141,47 @@ On the new machine, after `/setup-sync:pull`:
 ```
 
 Start a new Claude Code session: both mods load. `/plugin` shows a line like `2 mods active`. If a mod needed an npm package or a binary, the agent installed it from `externals.md` and ran `claude plugin validate` on the mod.
+
+## 8. Pull onto a machine you already use
+
+```text
+/setup-sync:pull
+```
+
+```text
+This machine already has a setup. Compared with the snapshot:
+  new: 7   same: 31   conflict: 4   only here: 5
+```
+
+Claude asks which mode you want (overwrite / replace / ask). If you pick **ask**, you get concrete questions, for example:
+
+```text
+settings.model       snapshot: "sonnet"        local: "opus"      -> Use snapshot / Keep local
+settings.env.FOO     snapshot: "snap"          local: "local"     -> Use snapshot / Keep local
+file:CLAUDE.md       differs                                       -> Use snapshot / Keep local / Keep both
+skills/localskill    only on this machine                          -> Keep / Remove
+mcp:local-srv        only on this machine                          -> Keep / Remove
+```
+
+Your answers become a decisions file and are applied:
+
+```json
+{
+  "settings.model": "local",
+  "settings.env.FOO": "local",
+  "file:CLAUDE.md": "both",
+  "skills/localskill": "remove"
+}
+```
+
+`both` leaves your `CLAUDE.md` untouched and writes the snapshot's version as `CLAUDE.md.synced`; Claude then offers to merge the two into one file with you.
+
+Everything is backed up first, for example to `~/.claude/backups/pre-sync-2026-10-07T10-28-06-795Z/`.
+
+## 9. Make a machine identical to the snapshot
+
+```text
+/setup-sync:pull --replace
+```
+
+Claude lists everything that exists only on this machine and would be removed (plugins, MCP servers, skills, settings keys), asks for one explicit confirmation, takes the backup, then makes the machine match the snapshot exactly. `setup-sync` itself and Anthropic's default marketplace are always kept.

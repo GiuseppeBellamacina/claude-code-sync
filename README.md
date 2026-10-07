@@ -100,6 +100,8 @@ Install `setup-sync` on the new machine first (two commands above), then:
 /setup-sync:pull D:\backup\cc    # or from another folder
 ```
 
+Fresh install or a Claude Code you already use: both work, see [merge modes](#already-have-a-setup-merge-modes).
+
 You get a report like this:
 
 ```json
@@ -116,6 +118,25 @@ Run `/reload-plugins` to apply plugin changes right away; new MCP servers start 
 
 More walkthroughs, including a full `externals.md`, are in [docs/examples.md](docs/examples.md). How it works under the hood: [docs/how-it-works.md](docs/how-it-works.md).
 
+## Already have a setup? Merge modes
+
+On a clean install there is nothing to merge. On a machine that is already configured, `pull` first runs a read-only comparison and tells you how many items are new, identical, in conflict, or only local. Then you choose:
+
+| Mode | Flag | What happens |
+| --- | --- | --- |
+| **Overwrite** (default) | `--overwrite` | The snapshot wins on conflicts. Things that exist only on this machine are kept. |
+| **Replace everything** | `--replace` | This machine ends up exactly like the snapshot: plugins, MCP servers, skills, agents and settings keys that are not in it are removed. Claude lists what will be removed and asks you to confirm first. |
+| **Ask** | `--ask` | Claude asks specific questions about each doubt (*"Your `model` is `opus`, the snapshot says `sonnet`: which one?"*) and applies your answers. |
+
+```text
+/setup-sync:pull --replace
+/setup-sync:pull D:\backup\cc --ask
+```
+
+Without a flag, Claude describes the situation and asks which mode you want. In **Ask** mode every conflict can be resolved as *use snapshot*, *keep local* or, for files, *keep both*, which saves the snapshot version next to yours as `<name>.synced`; Claude can then merge the two files with you, for example your `CLAUDE.md`. Local-only items can be *kept* or *removed*.
+
+**Safety net:** before changing anything, `pull` writes a full backup to `~/.claude/backups/pre-sync-<timestamp>/` (settings, `CLAUDE.md`, keybindings, skills, agents, commands, mods, MCP servers, marketplaces, plugin list). It never touches `setup-sync` itself, Anthropic's default marketplace, skills owned by external tools or credentials. Items whose snapshot value was redacted are never overwritten.
+
 ## Mods
 
 Mods are plugins, and the ones you make with `/plugin-authoring` live in a per-session hot-reload folder (`~/.claude/dev-mods/<session>/<mod>`) that a new machine knows nothing about. `setup-sync` finds them, plus any folder listed in `CLAUDE_CODE_PLUGIN_DIRS`, and on pull:
@@ -128,10 +149,10 @@ Restart Claude Code (or `/reload-plugins`) and the mods are active. `node_module
 
 ## Security
 
-- **Secrets are never written to the snapshot.** Any `env` or `headers` value whose key looks like a secret (`key`, `token`, `secret`, `password`, `auth`, `credential`) becomes `<REDACTED>`. MCP servers that need one are skipped on pull and listed, so you add them by hand; settings entries containing a redacted value are left untouched.
+- **Secrets are never written to the snapshot.** Any `env` or `headers` value whose key looks like a secret (`key`, `token`, `secret`, `password`, `auth`, `credential`) becomes `<REDACTED>`. Items containing one are never written or overwritten on pull: they are listed so you add them by hand, and an existing local value is kept.
 - **Redaction is name-based, so review the snapshot** (`manifest.json`) before sharing it anywhere. A token stuffed into a command-line argument or an oddly-named variable won't be caught.
 - **Treat the folder as private.** It lists your tools, paths and configuration. Don't push it to a public repo.
-- **Pull never overwrites.** Existing skills, agents, commands, MCP servers and `CLAUDE.md` are kept; `settings.json` is backed up to `~/.claude/backups/` and merged (objects one level deep, scalars overwritten by the snapshot).
+- **Pull is reversible.** Everything is backed up to `~/.claude/backups/pre-sync-<timestamp>/` before any change, and nothing is removed unless you pick *replace* (after seeing the list) or answer *remove* in *ask* mode.
 - **The agent asks first** before logins, secrets, `curl | sh` installers and system-wide installs, and skips an instruction rather than guess when it looks stale.
 - The push script refuses to write into a non-empty folder that isn't a previous snapshot, so it can't wipe an unrelated directory.
 
