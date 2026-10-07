@@ -11,6 +11,7 @@ setup-sync/
 │   └── pull/SKILL.md       # /setup-sync:pull
 └── scripts/
     ├── export.mjs          # deterministic snapshot
+    ├── select.mjs          # --exclude / --only selectors shared by the scripts
     ├── verify.mjs          # push verification
     └── apply.mjs           # deterministic restore (+ --plan, --verify)
 ```
@@ -76,6 +77,17 @@ Then the script applies the result in a fixed order:
 ### Settings
 
 Settings are resolved entry by entry (see the status table), so a conflict on `env.FOO` never affects `env.BAR`. Arrays and other values are replaced as a whole. In `replace` mode local-only entries are deleted and emptied objects are cleaned up.
+
+## Selection
+
+`select.mjs` implements `--exclude`, `--only` and the matching rules shared by `export.mjs` and `apply.mjs`:
+
+- A selector is `category` or `category:name`. A name matches an item exactly, or as a prefix followed by `.`, `@` or `/` (so `plugin:ponytail` matches `ponytail@ponytail`, `settings:env` matches `env.FOO`).
+- `--only` keeps just the listed selectors; `--exclude` always wins over it; aliases such as `plugin`, `mcp-servers`, `skill`, `claude.md` are accepted; unknown categories abort with an error.
+- **Push** applies the filters while collecting (settings are filtered per top-level key, and `enabledPlugins`, `extraKnownMarketplaces` and `hooks` per entry), and records them in `manifest.json` under `selection`.
+- **Pull** merges the snapshot's `selection` with its own flags and drops every excluded item before planning. So an excluded item is never compared, changed, removed or reported, and `replace` cannot delete local data the snapshot deliberately does not cover (`CLAUDE_CODE_PLUGIN_DIRS` is kept as is when mods are excluded).
+- **`--add <path>`** copies a file or folder (without `node_modules`) to `files/extra/` and records `{rel, isDir}` in `manifest.json` under `extras`, where `rel` is the path relative to the home folder. Paths outside the home folder, or inside the sync folder, are refused on push. On pull each extra becomes an item `extra:<rel>` with the usual statuses; a `rel` that is absolute or contains `..` is refused, so a tampered snapshot cannot write outside the home folder.
+- `verify.mjs` re-exports with the selection and extras recorded in the manifest, so verification checks exactly what was meant to be synced.
 
 ## Verification
 

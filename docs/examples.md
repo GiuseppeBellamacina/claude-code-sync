@@ -224,3 +224,41 @@ marketplaces 2 · plugins 18 · MCP servers 2 · skills 3 · agents 1 · mods 2 
 ````
 
 Because *Not synced* is not empty, Claude keeps the sync folder instead of offering to delete it.
+
+## 11. Sync only part of your setup
+
+```text
+/setup-sync:push everything except MCP servers, and also include ~/.gitconfig
+```
+
+Claude answers *"Syncing everything except MCP servers, plus ~/.gitconfig."* and runs the equivalent of:
+
+```bash
+node scripts/export.mjs --dir ~/.claude-sync --exclude mcp --add ~/.gitconfig
+```
+
+The push report says what was left out and what was added:
+
+```text
+selection: exclude [mcp]
+extra files: .gitconfig
+```
+
+On the other machine:
+
+```text
+/setup-sync:pull --replace
+```
+
+Replace makes the machine match the snapshot, but because the snapshot was pushed without MCP servers, the MCP servers already on that machine are left alone. Before writing `~/.gitconfig`, Claude shows the target path and asks for an OK.
+
+Other requests that work the same way:
+
+```text
+/setup-sync:push only plugins and settings
+/setup-sync:push skip hooks and my CLAUDE.md
+/setup-sync:push also note in externals.md that I use ripgrep
+/setup-sync:pull don't touch my MCP servers
+/setup-sync:pull only restore plugins
+```
+

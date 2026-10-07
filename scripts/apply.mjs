@@ -1,6 +1,7 @@
 // Pull, deterministic part: apply a pushed snapshot onto this machine, new or not.
 //
-//   node apply.mjs [--dir <folder>] [--mode overwrite|replace] [--plan] [--decisions <file>]
+//   node apply.mjs [--dir <folder>] [--mode overwrite|replace] [--plan] [--verify] [--decisions <file>]
+//                  [--exclude <sel,...>] [--only <sel,...>]   (selectors: see select.mjs)
 //
 // Every item (marketplace, plugin, MCP server, file/folder, settings key) is compared with the local
 // one and gets a status: new | same | conflict | localOnly | secret. What happens to it:
@@ -13,6 +14,7 @@ import os from 'node:os'
 import path from 'node:path'
 import crypto from 'node:crypto'
 import { spawnSync } from 'node:child_process'
+import { selection } from './select.mjs'
 
 const argv = process.argv
 const arg = n => { const i = argv.indexOf(n); return i > 0 ? argv[i + 1] : undefined }
@@ -30,6 +32,11 @@ if (!m) { console.error(`No manifest.json in ${dir}`); process.exit(1) }
 
 // No shell by default: a shell would strip the quotes inside JSON arguments. npm-style installs ship
 // claude.cmd, which needs a shell, so only then retry with every argument quoted.
+// What to touch: the pull's own flags plus what the push left out on purpose (so `replace` never
+// deletes local data the snapshot simply doesn't cover, e.g. MCP servers after `--exclude mcp`).
+const sel = selection(argv, m.selection)
+if (sel.unknown.length) { console.error(`Unknown category in --exclude/--only: ${sel.unknown.join(', ')}`); process.exit(1) }
+
 const claude = args => {
   const r = spawnSync('claude', args, { encoding: 'utf8' })
   if (r.error?.code !== 'ENOENT' || process.platform !== 'win32') return r
@@ -58,7 +65,7 @@ const hash = p => {
 }
 
 // ---------------------------------------------------------------- plan
-const items = []
+let items = []
 const add = (id, kind, status, snap, loc, run) => items.push({ id, kind, status, snap, loc, run })
 const ops = [] // queued settings edits, applied at the end on a fresh read
 const modDirs = []
@@ -138,6 +145,7 @@ const fileItem = (id, kind, src, dst, isMod) => {
 }
 const top = fs.existsSync(files) ? fs.readdirSync(files) : []
 for (const d of top) {
+  if (d === 'extra') continue // handled below, restored relative to the home folder
   const src = path.join(files, d)
   if (fs.statSync(src).isFile()) { fileItem(`file:${d}`, 'file', src, path.join(claudeDir, d)); continue }
   const base = d === 'mods' ? path.join(claudeDir, 'mods') : path.join(claudeDir, d)
@@ -153,6 +161,13 @@ for (const d of MANAGED) {
       fileItem(`${d}/${e}`, d === 'mods' ? 'mod' : 'file', null, path.join(local, e), d === 'mods')
 }
 
+// extra files/folders the user asked to sync (--add on push): same place relative to the home folder
+const unsafeExtras = []
+for (const { rel } of m.extras ?? []) {
+  if (!rel || path.isAbsolute(rel) || rel.split('/').includes('..')) { unsafeExtras.push(rel); continue }
+  fileItem(`extra:${rel}`, 'extra', path.join(files, 'extra', rel.replaceAll('/', '__')), path.join(home, rel))
+}
+
 // settings: one item per top-level key, or per sub-key for objects (so hooks/env/enabledPlugins
 // are resolved entry by entry). statusLine stays whole: its parts only make sense together.
 const locS = readJson(path.join(claudeDir, 'settings.json'))
@@ -164,6 +179,7 @@ const settingsItem = (p, hasS, sv, hasL, lv) => {
   add(id, 'settings', status, hasS ? short(sv) : undefined, hasL ? short(lv) : undefined, {
     snapshot: () => ops.push(['set', p, sv]),
     remove: () => ops.push(['del', p]),
+    path: p,
   })
 }
 for (const k of new Set([...Object.keys(m.settings), ...Object.keys(locS)])) {
@@ -173,6 +189,27 @@ for (const k of new Set([...Object.keys(m.settings), ...Object.keys(locS)])) {
       settingsItem([k, sub], sub in (sv ?? {}), sv?.[sub], sub in (lv ?? {}), lv?.[sub])
   } else settingsItem([k], k in m.settings, sv, k in locS, lv)
 }
+
+// ---------------------------------------------------------------- select
+const keyOf = it => {
+  const id = it.id
+  if (id.startsWith('marketplace:')) return ['marketplaces', id.slice(12)]
+  if (id.startsWith('plugin:')) return ['plugins', id.slice(7)]
+  if (id.startsWith('mcp:')) return ['mcp', id.slice(4)]
+  if (id === 'file:CLAUDE.md') return ['claude-md']
+  if (id === 'file:keybindings.json') return ['keybindings']
+  if (id.startsWith('extra:')) return ['extra', id.slice(6)]
+  if (it.run.path) {
+    const [k, n] = it.run.path
+    const cat = { enabledPlugins: 'plugins', extraKnownMarketplaces: 'marketplaces', hooks: 'hooks' }[k]
+    return cat ? [cat, n] : ['settings', it.run.path.join('.')]
+  }
+  const [d, e] = id.split('/')
+  return [d, e]
+}
+const before = items.length
+items = items.filter(it => sel.allowed(...keyOf(it)))
+const excludedCount = before - items.length
 
 // ---------------------------------------------------------------- decide
 const choiceOf = it => {
@@ -189,7 +226,7 @@ for (const i of items) counts[i.status] = (counts[i.status] ?? 0) + 1
 if (planOnly) {
   const interesting = items.filter(i => i.status !== 'same')
     .map(({ id, kind, status, snap, loc }) => ({ id, kind, status, snapshot: snap, local: loc }))
-  console.log(JSON.stringify({ dir, counts, items: interesting }, null, 2))
+  console.log(JSON.stringify({ dir, counts, excluded: excludedCount, selection: { exclude: sel.exclude, only: sel.only }, items: interesting }, null, 2))
   process.exit(0)
 }
 
@@ -234,7 +271,8 @@ fs.writeFileSync(path.join(backup, 'marketplaces.json'), JSON.stringify(localMk,
 fs.writeFileSync(path.join(backup, 'plugins.json'), JSON.stringify(Object.keys(installed), null, 2))
 
 // ---------------------------------------------------------------- apply (order = item order)
-const report = { mode, backup, ok: [], skipped: [], failed: [] }
+const report = { mode, backup, excluded: excludedCount, ok: [], skipped: [], failed: [] }
+for (const rel of unsafeExtras) report.failed.push(`extra:${rel}: unsafe path in the snapshot, refused`)
 for (const it of items) {
   if (it.status === 'same') continue
   const c = choiceOf(it)
@@ -264,7 +302,7 @@ for (const it of items) if (it.run.isMod) {
   const dst = path.join(claudeDir, 'mods', it.id.split('/')[1])
   if (fs.existsSync(dst) && !modDirs.includes(dst)) modDirs.push(dst)
 }
-const have = mode === 'replace' ? [] : (next.env?.CLAUDE_CODE_PLUGIN_DIRS ?? '').split(path.delimiter).filter(Boolean)
+const have = mode === 'replace' && !sel.touches('mods') ? [] : (next.env?.CLAUDE_CODE_PLUGIN_DIRS ?? '').split(path.delimiter).filter(Boolean)
 const dirs = [...new Set([...have, ...modDirs])]
 if (dirs.length) {
   next.env = { ...next.env, CLAUDE_CODE_PLUGIN_DIRS: dirs.join(path.delimiter) }

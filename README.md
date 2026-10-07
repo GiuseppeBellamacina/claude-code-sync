@@ -44,6 +44,7 @@ And it cleans up after itself: the sync folder is a plain local folder, and afte
 | **Mods** (made with `/plugin-authoring`) and plugins loaded from a folder | ✅ | Copied to `~/.claude/mods/` and registered through `CLAUDE_CODE_PLUGIN_DIRS`. See [Mods](#mods) |
 | Output styles, themes, workflows, `keybindings.json` | ✅ | Copied, never overwriting |
 | Global `CLAUDE.md` | ✅ | Copied if absent; otherwise left for you to merge |
+| Extra files/folders you choose (`~/.gitconfig`, notes, ...) | ✅ | With `--add`, see [Tell it what to sync](#tell-it-what-to-sync) |
 | **LSP servers** | ✅ | The `*-lsp` plugins come with the plugin list; the language server binaries (e.g. `pyright`, `typescript-language-server`) are installed by the agent |
 | External tools (CLIs, `uv`/`npm` globals, tools with their own installer) | ✅ | Documented on push, executed on pull by the agent |
 | Secrets (API keys, tokens) | ❌ | Replaced by `<REDACTED>`; you re-enter them. See [Security](#security) |
@@ -117,6 +118,37 @@ Then Claude works through `externals.md` — installing prerequisites, language 
 Run `/reload-plugins` to apply plugin changes right away; new MCP servers start with your next session.
 
 More walkthroughs, including a full `externals.md`, are in [docs/examples.md](docs/examples.md). How it works under the hood: [docs/how-it-works.md](docs/how-it-works.md).
+
+## Tell it what to sync
+
+You don't have to sync everything. Add a request in plain words, in any language, after the command. Claude turns it into precise filters, tells you how it understood it, and runs.
+
+```text
+/setup-sync:push everything except MCP servers
+/setup-sync:push only plugins and settings
+/setup-sync:push skip hooks and my CLAUDE.md
+/setup-sync:push also include ~/.gitconfig and my ~/notes folder
+/setup-sync:push also note in externals.md that I use ripgrep
+/setup-sync:pull don't touch my MCP servers
+/setup-sync:pull only restore plugins, keep everything else as it is
+```
+
+Under the hood these are flags you can also type yourself (`--exclude`, `--only`, `--add`):
+
+| You want | Flag | Example |
+| --- | --- | --- |
+| Leave something out | `--exclude <selectors>` | `--exclude mcp,hooks` |
+| Sync only some things | `--only <selectors>` | `--only plugins,settings` |
+| Add files or folders from outside `~/.claude` | `--add <path>` (repeatable) | `--add ~/.gitconfig --add ~/notes` |
+
+A selector is a **category** or `category:name` for a single item. Categories: `plugins`, `marketplaces`, `mcp`, `settings`, `hooks`, `skills`, `agents`, `commands`, `output-styles`, `themes`, `workflows`, `mods`, `claude-md`, `keybindings`, `extra`. Examples: `mcp:docs-langchain`, `plugin:ponytail`, `settings:theme`, `skills:my-skill`.
+
+Good to know:
+
+- **The snapshot remembers what you left out.** If you pushed with `--exclude mcp`, a later `pull --replace` will not delete the MCP servers of the target machine: replace only touches what the snapshot covers.
+- **Extra files** (`--add`) must be inside your home folder, are restored to the same place there, go through the same conflict handling and verification as everything else, and are listed with their target path for your confirmation before a pull writes them. Claude refuses or asks about anything that looks like credentials (`.env`, private keys, token files).
+- **Secrets stay out, whatever you ask.** Redaction cannot be switched off.
+- Anything the filters can't express (an extra tool to install, a note to leave for the other machine) is handled by Claude in `externals.md`.
 
 ## Already have a setup? Merge modes
 

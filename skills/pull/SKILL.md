@@ -2,17 +2,28 @@
 name: pull
 description: Restore a personal Claude Code setup from a local sync folder created by push, on a new OR an already configured machine (overwrite, replace everything, or ask item by item), then run the external-tool instructions. Use when the user runs /setup-sync:pull.
 disable-model-invocation: true
-argument-hint: "[folder] [--overwrite | --replace | --ask]"
+argument-hint: "[folder] [--overwrite | --replace | --ask] [what to restore or skip, in plain words] [--exclude <sel>] [--only <sel>]"
 ---
 
 # Sync pull
 
 Parse `$ARGUMENTS`: an optional folder (default `~/.claude-sync`) and an optional mode flag. If the folder has no `manifest.json`, stop and say so. In the commands below `<script>` is `${CLAUDE_PLUGIN_ROOT}/scripts/apply.mjs` (if `${CLAUDE_PLUGIN_ROOT}` was not expanded, it is under `~/.claude/plugins/cache/cosmic-plugins/setup-sync/`).
 
+## 0. Understand what the user asked
+
+Besides the folder and a mode flag, `$ARGUMENTS` may hold a request in plain words, in any language: *"don't touch my MCP servers"*, *"only restore plugins and settings"*, *"keep my CLAUDE.md"*, *"skip the tool installation"*, *"ask me about conflicts"*. Turn it into flags:
+
+- leave something alone: `--exclude <selectors>`; restore only some things: `--only <selectors>`.
+- Categories: `plugins`, `marketplaces`, `mcp`, `settings` (top-level setting names), `hooks`, `skills`, `agents`, `commands`, `output-styles`, `themes`, `workflows`, `mods`, `claude-md`, `keybindings`, `extra`. A selector is a category or `category:name` for one item (`mcp:docs-langchain`, `plugin:ponytail`, `settings:theme`, `agents:reviewer.md`).
+- "Ask me about conflicts" means the **Ask** mode; "wipe everything and use the snapshot" means **Replace**; "skip the tool installation" means skip step 4 and report it as skipped.
+- Pass the same flags to every script call below (`--plan`, apply, `--verify`). What the push itself left out is recorded in the snapshot and respected automatically: `replace` never deletes local data in a category the push did not cover.
+
+Say your interpretation in one line before running. Ask only when the request is really ambiguous.
+
 ## 1. Look before touching anything
 
 ```
-node "<script>" --dir "<folder>" --plan
+node "<script>" --dir "<folder>" [--exclude ...] [--only ...] --plan
 ```
 
 It changes nothing and prints `counts` and the non-identical items, each with an `id`, a `status` and short `snapshot`/`local` values:
@@ -44,8 +55,10 @@ Write the answers to a JSON file outside the sync folder, `{"<id>": "snapshot" |
 ## 3. Apply
 
 ```
-node "<script>" --dir "<folder>" [--mode replace] [--decisions <file>]
+node "<script>" --dir "<folder>" [--mode replace] [--decisions <file>] [--exclude ...] [--only ...]
 ```
+
+If the plan lists `extra:*` items, they are files the user asked to sync from outside `~/.claude` and will be written at the same place in the home folder. Show each target path and get an explicit OK first; leave out (`--exclude extra:<path>`) any the user does not confirm.
 
 It backs up first (`~/.claude/backups/pre-sync-<timestamp>/`: settings, CLAUDE.md, keybindings, skills/agents/commands/mods..., MCP servers, marketplaces, plugin list), then adds marketplaces, installs plugins, adds/replaces user MCP servers, copies files, copies mods to `~/.claude/mods/<name>` and registers them in `CLAUDE_CODE_PLUGIN_DIRS`, and writes `settings.json` last. Show the user the report (ok / skipped / failed) and the backup path, and say that restoring means copying files back from it.
 
@@ -66,7 +79,7 @@ Then execute each item in order, prerequisites first, and run its verify command
 Re-run the comparison against the machine as it is now, with the same flags the apply used:
 
 ```
-node "<script>" --dir "<folder>" [--mode replace] [--decisions <file>] --verify
+node "<script>" --dir "<folder>" [--mode replace] [--decisions <file>] [--exclude ...] [--only ...] --verify
 ```
 
 Exit code 2 means something is wrong. Read the output:

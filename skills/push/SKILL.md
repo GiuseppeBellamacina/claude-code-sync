@@ -2,17 +2,29 @@
 name: push
 description: Save this machine's personal Claude Code setup (settings, plugins, MCP, skills, agents, hooks, LSP) into a local sync folder, plus instructions for the external tools. Use when the user runs /setup-sync:push.
 disable-model-invocation: true
-argument-hint: "[folder, default ~/.claude-sync]"
+argument-hint: "[folder] [what to sync or skip, in plain words] [--exclude <sel>] [--only <sel>] [--add <path>]"
 ---
 
 # Sync push
 
 Target folder: `$ARGUMENTS` if given, otherwise `~/.claude-sync`.
 
+## 0. Understand what the user asked
+
+`$ARGUMENTS` may hold, besides the folder, a request in plain words, in any language: *"everything except MCP"*, *"only plugins and settings"*, *"skip hooks and my CLAUDE.md"*, *"also include ~/.gitconfig and ~/notes"*, *"also note that I use ripgrep"*. Turn it into flags for the scripts:
+
+- leave something out: `--exclude <selectors>`; sync only some things: `--only <selectors>`; add files or folders outside `~/.claude`: `--add <path>` (repeatable; only paths inside the home folder).
+- Categories: `plugins`, `marketplaces`, `mcp`, `settings` (top-level setting names), `hooks`, `skills`, `agents`, `commands`, `output-styles`, `themes`, `workflows`, `mods`, `claude-md`, `keybindings`, `extra`. A selector is a category or `category:name` for one item (`mcp:docs-langchain`, `plugin:ponytail`, `settings:theme`, `agents:reviewer.md`).
+- What flags cannot express is yours to handle: an extra tool or command to install goes into `externals.md`; "don't document external tools" means skip step 2 and say so in the report.
+- **Secrets are never included**, whatever the request: redaction stays on. If the user asks to sync a secret, explain and offer to document where to get it again.
+- Before adding a file with `--add`, look at its name and, if in doubt, its content. Refuse or ask for anything that looks like credentials (`.env`, private keys, token files, `credentials*`).
+
+Say your interpretation in one line before running (*"Syncing everything except MCP servers, plus ~/.gitconfig."*). Ask (AskUserQuestion) only when the request is really ambiguous. With no request, sync everything.
+
 ## 1. Snapshot the simple parts (deterministic)
 
 ```
-node "${CLAUDE_PLUGIN_ROOT}/scripts/export.mjs" --dir "<folder>"
+node "${CLAUDE_PLUGIN_ROOT}/scripts/export.mjs" --dir "<folder>" [--exclude ...] [--only ...] [--add ...]
 ```
 
 If `${CLAUDE_PLUGIN_ROOT}` was not expanded, the script is under `~/.claude/plugins/cache/cosmic-plugins/setup-sync/`. It writes `manifest.json` (settings incl. hooks/enabledPlugins/skillOverrides, user MCP servers, marketplaces, tool inventory) and `files/` (hand-made skills, agents, commands, output styles, themes, workflows, CLAUDE.md, keybindings.json, and **mods**: every plugin folder found in `~/.claude/dev-mods/*/` or listed in `CLAUDE_CODE_PLUGIN_DIRS`, without `node_modules` or the generated `.claude-plugin/types`). Secret-looking env/header values are already replaced by `<REDACTED>`.

@@ -34,9 +34,14 @@ const snap = readJson(path.join(dir, 'manifest.json'))
 chk('manifest.json exists and parses', !!snap?.version)
 if (snap) {
   try {
-    execFileSync(process.execPath, [path.join(path.dirname(fileURLToPath(import.meta.url)), 'export.mjs'), '--dir', tmp], { stdio: 'ignore' })
+    // re-export with the same selection and extras the push used
+    const args = [path.join(path.dirname(fileURLToPath(import.meta.url)), 'export.mjs'), '--dir', tmp]
+    if (snap.selection?.exclude?.length) args.push('--exclude', snap.selection.exclude.join(','))
+    if (snap.selection?.only?.length) args.push('--only', snap.selection.only.join(','))
+    for (const x of snap.extras ?? []) args.push('--add', path.join(os.homedir(), x.rel))
+    execFileSync(process.execPath, args, { stdio: 'ignore' })
     const live = readJson(path.join(tmp, 'manifest.json'))
-    for (const k of ['settings', 'mcpServers', 'marketplaces', 'copied', 'redacted'])
+    for (const k of ['settings', 'mcpServers', 'marketplaces', 'copied', 'redacted', 'extras'])
       if (stable(live[k]) !== stable(snap[k])) differences.push(`manifest.${k} differs from this machine now`)
     const a = tree(path.join(dir, 'files')), b = tree(path.join(tmp, 'files'))
     for (const [f, h] of b) if (!a.has(f)) differences.push(`missing in snapshot: files/${f}`); else if (a.get(f) !== h) differences.push(`content differs: files/${f}`)
