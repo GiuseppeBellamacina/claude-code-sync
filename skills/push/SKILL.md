@@ -15,7 +15,7 @@ Target folder: `$ARGUMENTS` if given, otherwise `~/.claude-sync`.
 node "${CLAUDE_PLUGIN_ROOT}/scripts/export.mjs" --dir "<folder>"
 ```
 
-If `${CLAUDE_PLUGIN_ROOT}` was not expanded, the script is under `~/.claude/plugins/cache/setup-sync/`. It writes `manifest.json` (settings incl. hooks/enabledPlugins/skillOverrides, user MCP servers, marketplaces, tool inventory) and `files/` (hand-made skills, agents, commands, output styles, themes, workflows, CLAUDE.md, keybindings.json, and **mods**: every plugin folder found in `~/.claude/dev-mods/*/` or listed in `CLAUDE_CODE_PLUGIN_DIRS`, without `node_modules` or the generated `.claude-plugin/types`). Secret-looking env/header values are already replaced by `<REDACTED>`.
+If `${CLAUDE_PLUGIN_ROOT}` was not expanded, the script is under `~/.claude/plugins/cache/cosmic-plugins/setup-sync/`. It writes `manifest.json` (settings incl. hooks/enabledPlugins/skillOverrides, user MCP servers, marketplaces, tool inventory) and `files/` (hand-made skills, agents, commands, output styles, themes, workflows, CLAUDE.md, keybindings.json, and **mods**: every plugin folder found in `~/.claude/dev-mods/*/` or listed in `CLAUDE_CODE_PLUGIN_DIRS`, without `node_modules` or the generated `.claude-plugin/types`). Secret-looking env/header values are already replaced by `<REDACTED>`.
 
 ## 2. Write `<folder>/externals.md` (your job)
 

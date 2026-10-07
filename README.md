@@ -53,8 +53,8 @@ And it cleans up after itself: the sync folder is a plain local folder, and afte
 ## Install
 
 ```text
-/plugin marketplace add GiuseppeBellamacina/claude-code-sync
-/plugin install setup-sync@setup-sync
+/plugin marketplace add GiuseppeBellamacina/cosmic-plugins
+/plugin install setup-sync@cosmic-plugins
 ```
 
 Requires Claude Code with plugin support and [Node.js](https://nodejs.org) 18+ (the scripts use only the Node standard library — nothing to `npm install`).
@@ -62,8 +62,8 @@ Requires Claude Code with plugin support and [Node.js](https://nodejs.org) 18+ (
 Prefer the CLI? (Also the way to go where `/plugin` isn't available, e.g. the VS Code extension: run these two commands in a terminal, then `/reload-plugins` in the session.)
 
 ```bash
-claude plugin marketplace add GiuseppeBellamacina/claude-code-sync
-claude plugin install setup-sync@setup-sync
+claude plugin marketplace add GiuseppeBellamacina/cosmic-plugins
+claude plugin install setup-sync@cosmic-plugins
 ```
 
 ## Usage

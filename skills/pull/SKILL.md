@@ -7,7 +7,7 @@ argument-hint: "[folder] [--overwrite | --replace | --ask]"
 
 # Sync pull
 
-Parse `$ARGUMENTS`: an optional folder (default `~/.claude-sync`) and an optional mode flag. If the folder has no `manifest.json`, stop and say so. In the commands below `<script>` is `${CLAUDE_PLUGIN_ROOT}/scripts/apply.mjs` (if `${CLAUDE_PLUGIN_ROOT}` was not expanded, it is under `~/.claude/plugins/cache/setup-sync/`).
+Parse `$ARGUMENTS`: an optional folder (default `~/.claude-sync`) and an optional mode flag. If the folder has no `manifest.json`, stop and say so. In the commands below `<script>` is `${CLAUDE_PLUGIN_ROOT}/scripts/apply.mjs` (if `${CLAUDE_PLUGIN_ROOT}` was not expanded, it is under `~/.claude/plugins/cache/cosmic-plugins/setup-sync/`).
 
 ## 1. Look before touching anything
 

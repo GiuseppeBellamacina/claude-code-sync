@@ -64,7 +64,7 @@ const ops = [] // queued settings edits, applied at the end on a fresh read
 const modDirs = []
 
 // never touched on removal: this plugin, its marketplace, and Anthropic's default marketplace
-const KEEP_MARKETPLACE = new Set(['setup-sync', 'claude-plugins-official'])
+const KEEP_MARKETPLACE = new Set(['cosmic-plugins', 'setup-sync', 'claude-plugins-official'])
 const KEEP_PLUGIN = id => id.startsWith('setup-sync@')
 
 // marketplaces

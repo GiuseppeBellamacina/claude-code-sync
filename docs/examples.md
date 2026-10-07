@@ -9,8 +9,8 @@ All outputs below are illustrative: names, versions and paths will differ on you
 /setup-sync:push D:\transfer\cc-setup
 
 # copy D:\transfer\cc-setup to the new laptop, then on the new laptop:
-/plugin marketplace add GiuseppeBellamacina/claude-code-sync
-/plugin install setup-sync@setup-sync
+/plugin marketplace add GiuseppeBellamacina/cosmic-plugins
+/plugin install setup-sync@cosmic-plugins
 /setup-sync:pull C:\Users\me\Desktop\cc-setup
 ```
 

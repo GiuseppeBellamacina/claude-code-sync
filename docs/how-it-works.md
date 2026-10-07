@@ -5,8 +5,7 @@
 ```text
 setup-sync/
 ├── .claude-plugin/
-│   ├── plugin.json         # plugin manifest
-│   └── marketplace.json    # makes this repo its own marketplace
+│   └── plugin.json         # plugin manifest (listed in the cosmic-plugins marketplace)
 ├── skills/
 │   ├── push/SKILL.md       # /setup-sync:push
 │   └── pull/SKILL.md       # /setup-sync:pull

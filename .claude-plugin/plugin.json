@@ -1,7 +1,7 @@
 {
   "name": "setup-sync",
   "displayName": "Setup Sync",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Push/pull your whole Claude Code setup (settings, plugins, MCP, skills, agents, hooks, LSP) to a local folder, and let the agent replay the install of external tools on a new machine.",
   "author": {
     "name": "Giuseppe Bellamacina",
