@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for helping! The project is intentionally small: four Node scripts (no dependencies) and two skills.
+Thanks for helping! The project is intentionally small: five Node scripts (no dependencies) and two skills.
 
 ## Ground rules
 

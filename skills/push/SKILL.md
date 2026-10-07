@@ -41,6 +41,8 @@ Everything that is not a plain Claude Code command needs written instructions so
 - **MCP servers**: for each one in `redacted`, name the secret needed and where to obtain it. Never write secret values.
 - **Not syncable**: claude.ai account connectors (Microsoft 365 etc.) are tied to the account, mention them as informational only.
 
+Write the commands for this machine's OS, and add the equivalents for the other systems when you know them (for example `winget install ...` / `brew install ...` / `apt install ...`), so a pull on another OS starts from something close. The snapshot records the OS it came from (`manifest.json` → `platform`).
+
 Use this shape per item: `## <name>` / what and why / commands (one block, in order) / verify / needs user (login, secret, confirmation). Verify every command against what is actually installed; do not invent steps.
 
 ## 3. Verify (do not skip)

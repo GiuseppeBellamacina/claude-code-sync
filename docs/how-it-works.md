@@ -12,6 +12,7 @@ setup-sync/
 └── scripts/
     ├── export.mjs          # deterministic snapshot
     ├── select.mjs          # --exclude / --only selectors shared by the scripts
+    ├── common.mjs          # cross-platform helpers (paths, copy, OS warnings)
     ├── verify.mjs          # push verification
     └── apply.mjs           # deterministic restore (+ --plan, --verify)
 ```
@@ -77,6 +78,15 @@ Then the script applies the result in a fixed order:
 ### Settings
 
 Settings are resolved entry by entry (see the status table), so a conflict on `env.FOO` never affects `env.BAR`. Arrays and other values are replaced as a whole. In `replace` mode local-only entries are deleted and emptied objects are cleaned up.
+
+## Cross-platform helpers
+
+`common.mjs` is shared by `export.mjs` and `apply.mjs`:
+
+- `claudeDir` / `claudeJson`: honor `CLAUDE_CONFIG_DIR`; the MCP state file is read from inside it if present, else from the home folder.
+- `copyTree`: `fs.cpSync` with `dereference: true` (symlinks are followed so links to absolute paths of the old machine never dangle), then on macOS/Linux every file starting with `#!` gets LF line endings and the executable bit. `export.mjs` wraps it so one unreadable entry (a dangling symlink) is recorded in `manifest.json` → `warnings` instead of aborting; `apply.mjs` treats an unreadable local entry as different from the snapshot.
+- `platformWarning(snapshotPlatform, value)`: compares the OS recorded in the snapshot (`manifest.json` → `platform`) with this machine's. Across Windows and POSIX it flags values with PowerShell/`.cmd`/`.bat`/drive-letter paths/`cmd /c` (from Windows) or `/home`, `/Users`, `/usr`, `.sh`, `bash` (from POSIX); between macOS and Linux it flags home paths. `apply.mjs` attaches the reason to settings and MCP items (`warning` in `--plan`, `warnings` in the apply report) and applies them as usual; Claude asks what to do with each.
+- `apply.mjs` runs `claude` without a shell. If the command is not found it says so (`claude` must be in `PATH`; a shell alias is not enough); on Windows only, a `.cmd` shim falls back to a shell with quoted arguments.
 
 ## Selection
 

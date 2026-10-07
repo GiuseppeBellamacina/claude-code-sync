@@ -10,16 +10,14 @@
 //   decisions file       {"<item id>": "snapshot" | "local" | "remove" | "both"} overrides the above
 // --plan prints the items and changes nothing. A full backup is always taken before changing anything.
 import fs from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
 import crypto from 'node:crypto'
 import { spawnSync } from 'node:child_process'
 import { selection } from './select.mjs'
+import { home, claudeDir, claudeJson, copyTree, platformWarning } from './common.mjs'
 
 const argv = process.argv
 const arg = n => { const i = argv.indexOf(n); return i > 0 ? argv[i + 1] : undefined }
-const home = os.homedir()
-const claudeDir = path.join(home, '.claude')
 const dir = path.resolve(arg('--dir') ?? path.join(home, '.claude-sync'))
 const mode = arg('--mode') ?? 'overwrite'
 const planOnly = argv.includes('--plan')
@@ -30,13 +28,13 @@ const decisions = arg('--decisions') ? readJson(path.resolve(arg('--decisions'))
 const m = readJson(path.join(dir, 'manifest.json'), null)
 if (!m) { console.error(`No manifest.json in ${dir}`); process.exit(1) }
 
-// No shell by default: a shell would strip the quotes inside JSON arguments. npm-style installs ship
-// claude.cmd, which needs a shell, so only then retry with every argument quoted.
 // What to touch: the pull's own flags plus what the push left out on purpose (so `replace` never
 // deletes local data the snapshot simply doesn't cover, e.g. MCP servers after `--exclude mcp`).
 const sel = selection(argv, m.selection)
 if (sel.unknown.length) { console.error(`Unknown category in --exclude/--only: ${sel.unknown.join(', ')}`); process.exit(1) }
 
+// No shell by default: a shell would strip the quotes inside JSON arguments. npm-style installs ship
+// claude.cmd, which needs a shell, so only then retry with every argument quoted.
 const claude = args => {
   const r = spawnSync('claude', args, { encoding: 'utf8' })
   if (r.error?.code !== 'ENOENT' || process.platform !== 'win32') return r
@@ -44,7 +42,8 @@ const claude = args => {
 }
 const must = args => {
   const r = claude(args)
-  if (r.status !== 0) throw new Error((r.stderr || r.stdout || '').trim().split('\n')[0] || `exit ${r.status}`)
+  if (r.error?.code === 'ENOENT') throw new Error('the `claude` command was not found in PATH (a shell alias is not enough)')
+  if (r.status !== 0) throw new Error((r.stderr || r.stdout || r.error?.message || '').trim().split('\n')[0] || `exit ${r.status}`)
 }
 const stable = v => JSON.stringify(v, (_, x) => x && typeof x === 'object' && !Array.isArray(x)
   ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => (a < b ? -1 : 1))) : x)
@@ -53,14 +52,14 @@ const short = v => (v === undefined ? undefined : (stable(v) ?? '').slice(0, 120
 const plain = o => o && typeof o === 'object' && !Array.isArray(o)
 const REDACTED = v => JSON.stringify(v ?? null).includes('<REDACTED>')
 const noModules = f => !/[\\/]node_modules([\\/]|$)/.test(f)
-const copy = (src, dst) => { fs.mkdirSync(path.dirname(dst), { recursive: true }); fs.cpSync(src, dst, { recursive: true, filter: noModules }) }
+const copy = (src, dst) => copyTree(src, dst, noModules)
 const hash = p => {
   const h = crypto.createHash('sha1')
   const walk = (f, rel) => {
     if (fs.statSync(f).isDirectory()) { for (const e of fs.readdirSync(f).sort()) if (e !== 'node_modules') walk(path.join(f, e), `${rel}/${e}`) }
     else h.update(`${rel}\0`).update(fs.readFileSync(f))
   }
-  walk(p, '')
+  try { walk(p, '') } catch { return 'unreadable' } // e.g. a dangling symlink: never equal to the snapshot
   return h.digest('hex')
 }
 
@@ -113,7 +112,7 @@ const normMcp = s => {
   if (o.type === 'stdio') delete o.type
   return o
 }
-const localMcp = readJson(path.join(home, '.claude.json')).mcpServers ?? {}
+const localMcp = readJson(claudeJson).mcpServers ?? {}
 for (const [name, s] of Object.entries(m.mcpServers)) {
   const status = REDACTED(s) ? 'secret' : !(name in localMcp) ? 'new' : eq(normMcp(localMcp[name]), normMcp(s)) ? 'same' : 'conflict'
   add(`mcp:${name}`, 'mcp', status, short(s), short(localMcp[name]), {
@@ -122,6 +121,7 @@ for (const [name, s] of Object.entries(m.mcpServers)) {
       must(['mcp', 'add-json', '--scope', 'user', name, JSON.stringify(s)])
     },
   })
+  items.at(-1).warning = platformWarning(m.platform, s)
 }
 for (const name of Object.keys(localMcp))
   if (!(name in m.mcpServers))
@@ -181,6 +181,7 @@ const settingsItem = (p, hasS, sv, hasL, lv) => {
     remove: () => ops.push(['del', p]),
     path: p,
   })
+  if (hasS) items.at(-1).warning = platformWarning(m.platform, sv)
 }
 for (const k of new Set([...Object.keys(m.settings), ...Object.keys(locS)])) {
   const sv = m.settings[k], lv = locS[k]
@@ -225,8 +226,8 @@ for (const i of items) counts[i.status] = (counts[i.status] ?? 0) + 1
 
 if (planOnly) {
   const interesting = items.filter(i => i.status !== 'same')
-    .map(({ id, kind, status, snap, loc }) => ({ id, kind, status, snapshot: snap, local: loc }))
-  console.log(JSON.stringify({ dir, counts, excluded: excludedCount, selection: { exclude: sel.exclude, only: sel.only }, items: interesting }, null, 2))
+    .map(({ id, kind, status, snap, loc, warning }) => ({ id, kind, status, snapshot: snap, local: loc, ...(warning ? { warning } : {}) }))
+  console.log(JSON.stringify({ dir, platform: { snapshot: m.platform, local: process.platform }, counts, excluded: excludedCount, selection: { exclude: sel.exclude, only: sel.only }, items: interesting }, null, 2))
   process.exit(0)
 }
 
@@ -271,7 +272,8 @@ fs.writeFileSync(path.join(backup, 'marketplaces.json'), JSON.stringify(localMk,
 fs.writeFileSync(path.join(backup, 'plugins.json'), JSON.stringify(Object.keys(installed), null, 2))
 
 // ---------------------------------------------------------------- apply (order = item order)
-const report = { mode, backup, excluded: excludedCount, ok: [], skipped: [], failed: [] }
+const report = { mode, backup, excluded: excludedCount, ok: [], skipped: [], failed: [], warnings: [] }
+for (const it of items) if (it.warning && it.status !== 'same' && choiceOf(it) === 'snapshot') report.warnings.push(`${it.id}: ${it.warning}`)
 for (const rel of unsafeExtras) report.failed.push(`extra:${rel}: unsafe path in the snapshot, refused`)
 for (const it of items) {
   if (it.status === 'same') continue

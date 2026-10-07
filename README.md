@@ -119,6 +119,21 @@ Run `/reload-plugins` to apply plugin changes right away; new MCP servers start 
 
 More walkthroughs, including a full `externals.md`, are in [docs/examples.md](docs/examples.md). How it works under the hood: [docs/how-it-works.md](docs/how-it-works.md).
 
+## Platform notes (Windows, macOS, Linux)
+
+The scripts use only Node's standard library and avoid shells, so they run the same on all three. Things that are handled for you:
+
+| Situation | What happens |
+| --- | --- |
+| Symlinks in your skills, agents, mods (common with dotfile managers on macOS/Linux) | They are followed and the real files are copied, so nothing dangles on the other machine. A broken link is skipped and reported as a warning instead of aborting the push. |
+| Shell scripts copied from Windows to macOS/Linux | Files starting with `#!` get Unix line endings and the executable bit (Windows has neither). |
+| `CLAUDE_CONFIG_DIR` set to relocate `~/.claude` | The scripts follow it (the MCP state file is looked up inside it first, then in your home folder). |
+| Plugin folders list in `CLAUDE_CODE_PLUGIN_DIRS` | Rebuilt on pull with the right separator (`:` or `;`) and the new machine's paths. |
+| `claude` installed as a `.cmd` shim (npm on Windows) | Detected and run through a shell with quoting; elsewhere no shell is used, so JSON arguments keep their quotes. |
+| Snapshot from a different OS | Values that look OS-specific (PowerShell or `.cmd` commands, `C:\...` paths, `cmd /c npx` MCP servers, `/home/...` or `/Users/...` paths, `.sh` scripts) are flagged as **warnings** in the plan and the report; Claude asks whether to keep, skip or adapt each. `externals.md` commands are translated by Claude (`winget` ↔ `brew` / `apt`) and confirmed with you first. |
+
+Limits: file names that differ only by case are not told apart on case-insensitive systems (Windows, default macOS), and permissions other than the executable bit of scripts are not preserved. Verified on Windows; macOS and Linux were checked by unit tests of the helpers, not on real machines, so reports from those systems are very welcome.
+
 ## Tell it what to sync
 
 You don't have to sync everything. Add a request in plain words, in any language, after the command. Claude turns it into precise filters, tells you how it understood it, and runs.

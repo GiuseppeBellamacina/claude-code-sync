@@ -19,8 +19,10 @@ const stable = v => JSON.stringify(v, (_, x) => x && typeof x === 'object' && !A
 const tree = root => {
   const out = new Map()
   const walk = (f, rel) => {
-    if (fs.statSync(f).isDirectory()) for (const e of fs.readdirSync(f)) walk(path.join(f, e), rel ? `${rel}/${e}` : e)
-    else out.set(rel, crypto.createHash('sha1').update(fs.readFileSync(f)).digest('hex'))
+    try {
+      if (fs.statSync(f).isDirectory()) for (const e of fs.readdirSync(f)) walk(path.join(f, e), rel ? `${rel}/${e}` : e)
+      else out.set(rel, crypto.createHash('sha1').update(fs.readFileSync(f)).digest('hex'))
+    } catch { /* unreadable entry (dangling symlink...): skipped, export reports it as a warning */ }
   }
   if (fs.existsSync(root)) walk(root, '')
   return out
