@@ -15,7 +15,7 @@ Target folder: `$ARGUMENTS` if given, otherwise `~/.claude-sync`.
 node "${CLAUDE_PLUGIN_ROOT}/scripts/export.mjs" --dir "<folder>"
 ```
 
-If `${CLAUDE_PLUGIN_ROOT}` was not expanded, the script is under `~/.claude/plugins/cache/setup-sync/`. It writes `manifest.json` (settings incl. hooks/enabledPlugins/skillOverrides, user MCP servers, marketplaces, tool inventory) and `files/` (hand-made skills, agents, commands, CLAUDE.md). Secret-looking env/header values are already replaced by `<REDACTED>`.
+If `${CLAUDE_PLUGIN_ROOT}` was not expanded, the script is under `~/.claude/plugins/cache/setup-sync/`. It writes `manifest.json` (settings incl. hooks/enabledPlugins/skillOverrides, user MCP servers, marketplaces, tool inventory) and `files/` (hand-made skills, agents, commands, output styles, themes, workflows, CLAUDE.md, keybindings.json, and **mods**: every plugin folder found in `~/.claude/dev-mods/*/` or listed in `CLAUDE_CODE_PLUGIN_DIRS`, without `node_modules` or the generated `.claude-plugin/types`). Secret-looking env/header values are already replaced by `<REDACTED>`.
 
 ## 2. Write `<folder>/externals.md` (your job)
 
@@ -25,6 +25,7 @@ Everything that is not a plain Claude Code command needs written instructions so
 - **LSP servers**: the `*-lsp` plugins only register a command; list the binaries they need (check each plugin's `.lsp.json`/manifest under `~/.claude/plugins/cache/`) and the exact install command (e.g. `npm install -g pyright typescript typescript-language-server`), taken from `inventory.npmGlobals`.
 - **External tools with their own skill/CLAUDE.md block** (graphify, hf CLI, etc.): install command, the follow-up command (e.g. `graphify install`), a verify command, and what is per-project and therefore NOT part of the sync.
 - **Hooks and statusLine** in `settings.json`: for each `command`, say which script/binary it runs, whether it lives in a plugin (then nothing to do) or at a machine-specific absolute path (then say what must be recreated or adapted).
+- **Mods**: for each mod copied, read its hooks module and manifest. If it shells out (`$.process`), calls external binaries or MCP servers, reads files at absolute paths, or declares `userConfig`/`pluginConfigs` values, document that here. If it has a `package.json` with dependencies, add the install command. Mods keep cross-session data in `$.store`; that data is not synced, say so if a mod relies on it.
 - **MCP servers**: for each one in `redacted`, name the secret needed and where to obtain it. Never write secret values.
 - **Not syncable**: claude.ai account connectors (Microsoft 365 etc.) are tied to the account, mention them as informational only.
 

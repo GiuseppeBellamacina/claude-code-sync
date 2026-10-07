@@ -46,18 +46,21 @@ for (const [name, s] of Object.entries(m.mcpServers)) {
   else run(`mcp ${name}`, ['mcp', 'add-json', '--scope', 'user', name, JSON.stringify(s)])
 }
 
-// 4. skills / agents / commands / CLAUDE.md, never overwriting
+// 4. skills / agents / commands / styles / themes / workflows / CLAUDE.md / keybindings, never overwriting.
+// Mods go to ~/.claude/mods/<name> and are loaded through CLAUDE_CODE_PLUGIN_DIRS (step 5).
 const files = path.join(dir, 'files')
+const modDirs = []
 if (fs.existsSync(files)) for (const d of fs.readdirSync(files)) {
   const src = path.join(files, d)
-  if (d === 'CLAUDE.md') {
+  if (fs.statSync(src).isFile()) {
     const dst = path.join(claudeDir, d)
-    if (fs.existsSync(dst)) report.skipped.push('CLAUDE.md (exists, merge by hand from the sync folder)')
-    else { fs.copyFileSync(src, dst); report.ok.push('CLAUDE.md') }
+    if (fs.existsSync(dst)) report.skipped.push(`${d} (exists, merge by hand from the sync folder)`)
+    else { fs.copyFileSync(src, dst); report.ok.push(d) }
     continue
   }
   for (const e of fs.readdirSync(src)) {
     const dst = path.join(claudeDir, d, e)
+    if (d === 'mods') modDirs.push(dst)
     if (fs.existsSync(dst)) { report.skipped.push(`${d}/${e} (exists)`); continue }
     fs.mkdirSync(path.dirname(dst), { recursive: true })
     fs.cpSync(path.join(src, e), dst, { recursive: true })
@@ -74,10 +77,23 @@ if (fs.existsSync(sp)) {
   fs.copyFileSync(sp, path.join(claudeDir, 'backups', `settings.json.pre-sync.${Date.now()}`))
 }
 const next = { ...cur }
-for (const [k, v] of Object.entries(m.settings)) {
-  if (JSON.stringify(v).includes('<REDACTED>')) { report.failed.push(`settings.${k}: contains redacted secret, left untouched`); continue }
-  const plain = o => o && typeof o === 'object' && !Array.isArray(o)
+const plain = o => o && typeof o === 'object' && !Array.isArray(o)
+for (const [k, v0] of Object.entries(m.settings)) {
+  let v = v0
+  if (plain(v)) {
+    // Drop individual redacted entries (the secret must be set by hand), keep the rest.
+    v = Object.fromEntries(Object.entries(v).filter(([sub, val]) => {
+      const hit = JSON.stringify(val).includes('<REDACTED>')
+      if (hit) report.failed.push(`settings.${k}.${sub}: secret, set by hand`)
+      return !hit
+    }))
+  } else if (JSON.stringify(v).includes('<REDACTED>')) { report.failed.push(`settings.${k}: contains redacted secret, left untouched`); continue }
   next[k] = plain(v) && plain(cur[k]) ? { ...cur[k], ...v } : v
+}
+if (modDirs.length) {
+  const have = (cur.env?.CLAUDE_CODE_PLUGIN_DIRS ?? '').split(path.delimiter).filter(Boolean)
+  next.env = { ...next.env, CLAUDE_CODE_PLUGIN_DIRS: [...new Set([...have, ...modDirs])].join(path.delimiter) }
+  report.ok.push(`CLAUDE_CODE_PLUGIN_DIRS set for ${modDirs.length} mod(s); restart Claude Code or run /reload-plugins`)
 }
 fs.writeFileSync(sp, JSON.stringify(next, null, 2))
 report.ok.push('settings.json merged')

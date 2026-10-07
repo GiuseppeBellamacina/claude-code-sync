@@ -118,3 +118,26 @@ node scripts/export.mjs --dir ./snapshot      # same script the skill runs
 ```
 
 Then open `snapshot/manifest.json` and search for anything sensitive. Redacted values show as `<REDACTED>`; everything else is verbatim.
+
+## 7. Bring your own mods
+
+You built a status-line mod and a prompt-rewriting mod with `/plugin-authoring`. On the old machine:
+
+```text
+/setup-sync:push
+```
+
+```text
+mods/plugin folders: statusline-ticker, prompt-polish
+copied: mods/statusline-ticker, mods/prompt-polish, ...
+```
+
+On the new machine, after `/setup-sync:pull`:
+
+```text
+~/.claude/mods/statusline-ticker
+~/.claude/mods/prompt-polish
+~/.claude/settings.json  →  "env": { "CLAUDE_CODE_PLUGIN_DIRS": "<home>/.claude/mods/statusline-ticker;<home>/.claude/mods/prompt-polish" }
+```
+
+Start a new Claude Code session: both mods load. `/plugin` shows a line like `2 mods active`. If a mod needed an npm package or a binary, the agent installed it from `externals.md` and ran `claude plugin validate` on the mod.

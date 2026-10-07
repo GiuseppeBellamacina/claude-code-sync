@@ -1,6 +1,6 @@
 # setup-sync — move your whole Claude Code setup to a new machine in two commands
 
-> `/setup-sync:push` on the old machine. `/setup-sync:pull` on the new one. Settings, plugins, MCP servers, skills, agents, hooks and LSP servers come with you — and Claude installs the awkward external tools for you.
+> `/setup-sync:push` on the old machine. `/setup-sync:pull` on the new one. Settings, plugins, MCP servers, skills, agents, hooks, LSP servers and your own mods come with you — and Claude installs the awkward external tools for you.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-d97757.svg)](https://code.claude.com/docs/en/plugins)
@@ -41,6 +41,8 @@ And it cleans up after itself: the sync folder is a plain local folder, and afte
 | Plugins (enabled **and** disabled) | ✅ | `claude plugin install`, then the on/off state is restored |
 | MCP servers (user scope) | ✅ | `claude mcp add-json --scope user` |
 | Custom skills, **agents**, commands | ✅ | Copied, never overwriting existing ones |
+| **Mods** (made with `/plugin-authoring`) and plugins loaded from a folder | ✅ | Copied to `~/.claude/mods/` and registered through `CLAUDE_CODE_PLUGIN_DIRS`. See [Mods](#mods) |
+| Output styles, themes, workflows, `keybindings.json` | ✅ | Copied, never overwriting |
 | Global `CLAUDE.md` | ✅ | Copied if absent; otherwise left for you to merge |
 | **LSP servers** | ✅ | The `*-lsp` plugins come with the plugin list; the language server binaries (e.g. `pyright`, `typescript-language-server`) are installed by the agent |
 | External tools (CLIs, `uv`/`npm` globals, tools with their own installer) | ✅ | Documented on push, executed on pull by the agent |
@@ -113,6 +115,16 @@ Then Claude works through `externals.md` — installing prerequisites, language 
 Run `/reload-plugins` to apply plugin changes right away; new MCP servers start with your next session.
 
 More walkthroughs, including a full `externals.md`, are in [docs/examples.md](docs/examples.md). How it works under the hood: [docs/how-it-works.md](docs/how-it-works.md).
+
+## Mods
+
+Mods are plugins, and the ones you make with `/plugin-authoring` live in a per-session hot-reload folder (`~/.claude/dev-mods/<session>/<mod>`) that a new machine knows nothing about. `setup-sync` finds them, plus any folder listed in `CLAUDE_CODE_PLUGIN_DIRS`, and on pull:
+
+1. copies each one to `~/.claude/mods/<name>` (skipping any that already exist),
+2. adds those folders to `CLAUDE_CODE_PLUGIN_DIRS` in `~/.claude/settings.json` (the documented way to load plugin folders permanently), keeping whatever was there,
+3. lets the agent install anything a mod depends on and validate it with `claude plugin validate`.
+
+Restart Claude Code (or `/reload-plugins`) and the mods are active. `node_modules` and the engine-generated `.claude-plugin/types` are left out; if a mod has dependencies, the agent reinstalls them from `externals.md`. If your organization's managed settings set `disableSideloadFlags`, folder-loaded plugins are blocked on that machine. Data a mod keeps in `$.store` is not synced.
 
 ## Security
 

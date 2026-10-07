@@ -34,7 +34,8 @@ It is plain files with no database and no daemon. Delete the folder and the plug
    - `~/.claude/settings.json`
    - `~/.claude.json` → user-level `mcpServers`
    - `~/.claude/plugins/known_marketplaces.json`
-   - `~/.claude/{skills,agents,commands}` and `~/.claude/CLAUDE.md`
+   - `~/.claude/{skills,agents,commands,output-styles,themes,workflows}`, `~/.claude/CLAUDE.md` and `keybindings.json`
+   - mods: plugin folders in `~/.claude/dev-mods/*/*` and in `CLAUDE_CODE_PLUGIN_DIRS` (deduplicated by plugin name, newest wins; `node_modules` and `.claude-plugin/types` excluded)
    - the output of `npm ls -g`, `uv tool list` and a few `--version` calls (the *inventory*)
 
    Secret-looking values are redacted (see below), then everything is written to the folder. Skills installed by an external tool (e.g. graphify) or managed by the app are skipped on purpose: they are rebuilt from `externals.md`.
@@ -49,8 +50,8 @@ It is plain files with no database and no daemon. Delete the folder and the plug
    | 1. Marketplaces | `claude plugin marketplace add <source>` |
    | 2. Plugins | `claude plugin install <plugin@marketplace>` for every entry in `enabledPlugins` (skips installed ones) |
    | 3. MCP servers | `claude mcp add-json --scope user <name> <json>` (skips existing; skips servers with redacted secrets) |
-   | 4. Files | copy skills / agents / commands / `CLAUDE.md`, never overwriting |
-   | 5. Settings | back up `settings.json`, then merge |
+   | 4. Files | copy skills / agents / commands / styles / themes / workflows / `CLAUDE.md` / keybindings, never overwriting; copy mods to `~/.claude/mods/<name>` |
+   | 5. Settings | back up `settings.json`, then merge; add the copied mods to `env.CLAUDE_CODE_PLUGIN_DIRS` (the snapshot's own value is dropped on push, because it holds absolute paths of the old machine) |
 
    Settings come **last** on purpose: `plugin install` rewrites `enabledPlugins`, and the final on/off state must be the one from your snapshot.
 2. **The agent** follows `externals.md` in order, verifying each step, asking before anything risky.
@@ -58,7 +59,7 @@ It is plain files with no database and no daemon. Delete the folder and the plug
 
 ### Settings merge rule
 
-For each top-level key in the snapshot: if both the snapshot and the target value are objects, they are merged one level deep (snapshot wins on conflicts); otherwise the snapshot value replaces the target's. Keys that contain a redacted value are left untouched. Keys only present in the target are kept.
+For each top-level key in the snapshot: if both the snapshot and the target value are objects, they are merged one level deep (snapshot wins on conflicts); otherwise the snapshot value replaces the target's. Inside an object (e.g. `env`), only the redacted entries are skipped and reported; the other entries still apply. A top-level scalar that is itself redacted is left untouched. Keys only present in the target are kept.
 
 ## Redaction
 
@@ -69,4 +70,5 @@ Under `env` and `headers` (in `settings.json` and in each MCP server), any key m
 - claude.ai account connectors (they live in your account).
 - Credentials, history, caches, per-project state.
 - Project-scoped (`.mcp.json`, `.claude/`) configuration.
+- Data a mod keeps in `$.store`.
 - Plugin versions: plugins are installed at whatever version your marketplaces serve today.
