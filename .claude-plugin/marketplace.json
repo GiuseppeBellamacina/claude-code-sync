@@ -1,0 +1,18 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "setup-sync",
+  "description": "Sync your Claude Code setup across machines: settings, plugins, MCP servers, skills, agents, hooks and LSP servers.",
+  "owner": {
+    "name": "Giuseppe Bellamacina",
+    "url": "https://github.com/GiuseppeBellamacina"
+  },
+  "plugins": [
+    {
+      "name": "setup-sync",
+      "description": "Push/pull your whole Claude Code setup to a local folder. Simple parts are replayed with plain commands, external tools (graphify, LSP binaries...) are installed by the agent from written instructions.",
+      "source": "./",
+      "category": "productivity",
+      "keywords": ["sync", "backup", "dotfiles", "migration"]
+    }
+  ]
+}

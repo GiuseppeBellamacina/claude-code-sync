@@ -1,0 +1,14 @@
+{
+  "name": "setup-sync",
+  "displayName": "Setup Sync",
+  "version": "0.1.0",
+  "description": "Push/pull your whole Claude Code setup (settings, plugins, MCP, skills, agents, hooks, LSP) to a local folder, and let the agent replay the install of external tools on a new machine.",
+  "author": {
+    "name": "Giuseppe Bellamacina",
+    "url": "https://github.com/GiuseppeBellamacina"
+  },
+  "homepage": "https://github.com/GiuseppeBellamacina/claude-code-sync",
+  "repository": "https://github.com/GiuseppeBellamacina/claude-code-sync",
+  "license": "MIT",
+  "keywords": ["sync", "backup", "dotfiles", "settings", "migration", "setup", "plugins", "mcp"]
+}
