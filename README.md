@@ -59,7 +59,7 @@ And it cleans up after itself: the sync folder is a plain local folder, and afte
 
 Requires Claude Code with plugin support and [Node.js](https://nodejs.org) 18+ (the scripts use only the Node standard library — nothing to `npm install`).
 
-Prefer the CLI?
+Prefer the CLI? (Also the way to go where `/plugin` isn't available, e.g. the VS Code extension: run these two commands in a terminal, then `/reload-plugins` in the session.)
 
 ```bash
 claude plugin marketplace add GiuseppeBellamacina/claude-code-sync
