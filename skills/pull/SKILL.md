@@ -59,8 +59,48 @@ Execute each item in order, prerequisites first, and run its verify command afte
 - For each mod, run the setup its entry lists (dependencies, binaries), then `claude plugin validate ~/.claude/mods/<name>` and report the result.
 - Per-project steps (e.g. `/graphify .`) are only mentioned, not run.
 
-## 5. Wrap up
+## 5. Verify (do not skip)
 
-Summarize: done, skipped, failed, still needs the user. Remind that `/reload-plugins` applies plugin changes now, but new MCP servers and newly registered mods need a new session (mods load through `CLAUDE_CODE_PLUGIN_DIRS`, read at startup).
+Re-run the comparison against the machine as it is now, with the same flags the apply used:
 
-Then ask whether to delete the sync folder. Delete it only after an explicit yes, only the exact folder used, and keep it if anything failed or was skipped so the pull can be re-run. The backup folder in `~/.claude/backups/` is separate and is never deleted by this skill.
+```
+node "<script>" --dir "<folder>" [--mode replace] [--decisions <file>] --verify
+```
+
+Exit code 2 means something is wrong. Read the output:
+
+- `mismatches`: items that were meant to change but still differ. Try once to fix the cause (a failed command is in the apply report), re-run apply for them, verify again; if it still fails, report it as not synced, with the error.
+- `intentionallyKept`: what the user chose to keep local. Not a failure, list it as kept.
+- `needsUser`: secrets the user must enter by hand.
+- `checks`: settings parse, mods registered in `CLAUDE_CODE_PLUGIN_DIRS`, backup exists.
+
+Then verify what the script cannot see, with real commands: each external tool from `externals.md` answers its verify command, each mod passed `claude plugin validate`, hook/statusLine commands point at paths that exist.
+
+## 6. Report and checklist
+
+Write `pull-report.md` into the backup folder (`~/.claude/backups/pre-sync-<timestamp>/`, so it survives deleting the sync folder) and show the same content to the user:
+
+```
+# Setup Sync, pull report (<date>, <OS>, mode: overwrite|replace|ask)
+## Synced        counts by kind (marketplaces, plugins, MCP servers, files, mods, settings entries, externals installed)
+## Kept          what the user chose to keep local, and local-only items that were left alone
+## Removed       what replace/ask removed (empty otherwise)
+## Not synced    each item, the error or reason, and how to fix it
+## Needs you     secrets to enter, logins, a new session to start
+## Checklist
+- [x] backup taken (path)
+- [x] marketplaces and plugins installed, on/off state matches the snapshot
+- [x] MCP servers present
+- [x] files, agents, skills, styles, themes, workflows copied
+- [x] mods copied, registered in CLAUDE_CODE_PLUGIN_DIRS, claude plugin validate passed
+- [x] settings.json written and parses
+- [x] every external tool installed and its verify command passed
+- [x] verify run: no unexpected leftovers
+- [ ] new session started so MCP servers and mods load   <- always left for the user
+```
+
+Tick a box only with evidence from the verify output or a command you ran; otherwise leave it `[ ]` with the reason. Remind that `/reload-plugins` applies plugin changes now, but new MCP servers and newly registered mods need a new session (mods load through `CLAUDE_CODE_PLUGIN_DIRS`, read at startup).
+
+## 7. Clean up
+
+Ask whether to delete the sync folder. Delete it only after an explicit yes, only the exact folder used, and keep it if anything is under *Not synced* or *Needs you* so the pull can be re-run. The backup folder in `~/.claude/backups/` (which holds the report) is separate and is never deleted by this skill.

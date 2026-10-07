@@ -1,6 +1,6 @@
 # How it works
 
-`setup-sync` is a regular Claude Code plugin: two skills (`push`, `pull`) and two zero-dependency Node scripts. It is **not** a mod and registers no hooks, so it does nothing until you invoke a command.
+`setup-sync` is a regular Claude Code plugin: two skills (`push`, `pull`) and three zero-dependency Node scripts. It is **not** a mod and registers no hooks, so it does nothing until you invoke a command.
 
 ```text
 setup-sync/
@@ -12,7 +12,8 @@ setup-sync/
 │   └── pull/SKILL.md       # /setup-sync:pull
 └── scripts/
     ├── export.mjs          # deterministic snapshot
-    └── apply.mjs           # deterministic restore
+    ├── verify.mjs          # push verification
+    └── apply.mjs           # deterministic restore (+ --plan, --verify)
 ```
 
 ## The sync folder
@@ -76,6 +77,12 @@ Then the script applies the result in a fixed order:
 ### Settings
 
 Settings are resolved entry by entry (see the status table), so a conflict on `env.FOO` never affects `env.BAR`. Arrays and other values are replaced as a whole. In `replace` mode local-only entries are deleted and emptied objects are cleaned up.
+
+## Verification
+
+- **`scripts/verify.mjs`** (push): exports the machine again into a temp folder and compares `settings`, `mcpServers`, `marketplaces`, the copied list, the redaction list and every file under `files/` with the snapshot; scans every snapshot file for secret patterns (OpenAI/Anthropic-style keys, GitHub, Slack and AWS tokens, bearer tokens, private keys) and reports `{file, pattern}` only; checks `externals.md` is present and lists inventory tools it does not mention. Exit code 2 on any failure.
+- **`apply.mjs --verify`** (pull): same flags as the pull. Recomputes the plan against the machine and reports `mismatches` (should have changed, still differs), `intentionallyKept`, `needsUser` (redacted secrets), and checks that `settings.json` parses, mods are registered in `CLAUDE_CODE_PLUGIN_DIRS` and a backup exists. Exit code 2 on any failure.
+- The agent then runs what scripts can't: external tools' verify commands, `claude plugin validate` for mods, existence of hook/statusLine paths, and writes the checklist report.
 
 ## Redaction
 

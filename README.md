@@ -147,6 +147,26 @@ Mods are plugins, and the ones you make with `/plugin-authoring` live in a per-s
 
 Restart Claude Code (or `/reload-plugins`) and the mods are active. `node_modules` and the engine-generated `.claude-plugin/types` are left out; if a mod has dependencies, the agent reinstalls them from `externals.md`. If your organization's managed settings set `disableSideloadFlags`, folder-loaded plugins are blocked on that machine. Data a mod keeps in `$.store` is not synced.
 
+## Reports and verification
+
+Both commands end with a **verification step** and a **report with a checklist**, so you know what actually happened instead of trusting a "done".
+
+- **Push** re-exports your machine into a temp folder and diffs it against the snapshot (`scripts/verify.mjs`), scans the snapshot for secret-looking values (it reports the file and the pattern, never the value), and checks that `externals.md` exists and covers the tools found on the machine. The report is saved as `push-report.md` in the sync folder.
+- **Pull** recomputes the comparison against the machine *after* applying (`apply.mjs --verify`): anything that was meant to change but still differs is listed as a failure, what you chose to keep is listed as kept, and secrets you must enter are listed separately. Claude then runs the real checks the script can't (each external tool's verify command, `claude plugin validate` on every mod). The report is saved as `pull-report.md` inside the backup folder, so it survives deleting the sync folder.
+
+The report always has the same shape:
+
+```text
+## Synced       counts by kind (plugins, MCP servers, skills, mods, settings entries, ...)
+## Kept         chosen to stay local
+## Removed      removed by replace/ask
+## Not synced   each item + the error + how to fix it
+## Needs you    secrets, logins, a new session
+## Checklist    [x] only with evidence from a check, [ ] with the reason otherwise
+```
+
+A box is ticked only if a verification output or a command backs it up. Anything unverified stays unticked with the reason, and the sync folder is kept (not offered for deletion) while anything is under *Not synced* or *Needs you*.
+
 ## Security
 
 - **Secrets are never written to the snapshot.** Any `env` or `headers` value whose key looks like a secret (`key`, `token`, `secret`, `password`, `auth`, `credential`) becomes `<REDACTED>`. Items containing one are never written or overwritten on pull: they are listed so you add them by hand, and an existing local value is kept.

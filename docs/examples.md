@@ -185,3 +185,42 @@ Everything is backed up first, for example to `~/.claude/backups/pre-sync-2026-1
 ```
 
 Claude lists everything that exists only on this machine and would be removed (plugins, MCP servers, skills, settings keys), asks for one explicit confirmation, takes the backup, then makes the machine match the snapshot exactly. `setup-sync` itself and Anthropic's default marketplace are always kept.
+
+## 10. What a report looks like
+
+`pull-report.md` after pulling onto a machine you already use (ask mode):
+
+````markdown
+# Setup Sync, pull report (2026-10-07, Windows 11, mode: ask)
+
+## Synced
+marketplaces 2 · plugins 18 · MCP servers 2 · skills 3 · agents 1 · mods 2 · settings entries 14 · externals installed 3
+
+## Kept
+- settings.model (kept local: "opus")
+- file:CLAUDE.md (kept both, merged with you; CLAUDE.md.synced deleted)
+
+## Removed
+- skills/old-experiment (you answered "remove")
+
+## Not synced
+- mcp:my-server: needs a secret (API_KEY). Fix: `claude mcp add-json --scope user my-server '{...}'`
+- external `hf` CLI: install failed (`uv tool install` exited 1: no network). Fix: re-run `/setup-sync:pull` when online
+
+## Needs you
+- Enter the API_KEY for `my-server`
+- Start a new session so MCP servers and mods load
+
+## Checklist
+- [x] backup taken: ~/.claude/backups/pre-sync-2026-10-07T10-35-37Z
+- [x] marketplaces and plugins installed, on/off state matches the snapshot
+- [x] MCP servers present (1 of 2, see Not synced)
+- [x] files, agents, skills copied
+- [x] mods copied, registered in CLAUDE_CODE_PLUGIN_DIRS, `claude plugin validate` passed (2/2)
+- [x] settings.json written and parses
+- [ ] every external tool installed and verified: hf failed (see Not synced)
+- [x] verify run: no unexpected leftovers
+- [ ] new session started so MCP servers and mods load
+````
+
+Because *Not synced* is not empty, Claude keeps the sync folder instead of offering to delete it.

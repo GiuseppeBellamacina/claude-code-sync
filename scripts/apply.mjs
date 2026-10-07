@@ -133,6 +133,7 @@ const fileItem = (id, kind, src, dst, isMod) => {
     remove: () => fs.rmSync(dst, { recursive: true, force: true }),
     both: () => copy(src, `${dst}.synced`), // keep local, put the snapshot version next to it to merge by hand
     isMod,
+    dst,
   })
 }
 const top = fs.existsSync(files) ? fs.readdirSync(files) : []
@@ -190,6 +191,35 @@ if (planOnly) {
     .map(({ id, kind, status, snap, loc }) => ({ id, kind, status, snapshot: snap, local: loc }))
   console.log(JSON.stringify({ dir, counts, items: interesting }, null, 2))
   process.exit(0)
+}
+
+// ---------------------------------------------------------------- verify (run again after the pull, same flags)
+// The plan is recomputed against the machine as it is now. Whatever was meant to change but still
+// differs is a mismatch; what the user chose to keep is listed as such, not as a failure.
+if (argv.includes('--verify')) {
+  const mismatches = [], intentionallyKept = [], needsUser = []
+  for (const it of items) {
+    if (it.status === 'same') continue
+    const c = choiceOf(it)
+    if (it.status === 'secret') { if (it.loc === undefined) needsUser.push(it.id); continue }
+    if (c === 'local') { intentionallyKept.push(it.id); continue }
+    if (c === 'both' && it.run.dst && fs.existsSync(`${it.run.dst}.synced`)) { intentionallyKept.push(`${it.id} (+ .synced copy)`); continue }
+    mismatches.push({ id: it.id, expected: c, actualStatus: it.status, snapshot: it.snap, local: it.loc })
+  }
+  const checks = []
+  const chk = (name, ok, detail) => checks.push({ name, ok, ...(detail ? { detail } : {}) })
+  try { JSON.parse(fs.readFileSync(path.join(claudeDir, 'settings.json'), 'utf8')); chk('settings.json parses', true) }
+  catch (e) { chk('settings.json parses', false, e.message) }
+  const loaded = (locS.env?.CLAUDE_CODE_PLUGIN_DIRS ?? '').split(path.delimiter).filter(Boolean).map(p => path.resolve(p))
+  for (const it of items) if (it.run.isMod && it.status === 'same' && choiceOf(it) !== 'remove') {
+    const dst = path.resolve(path.join(claudeDir, 'mods', it.id.split('/')[1]))
+    chk(`mod ${it.id.split('/')[1]} registered in CLAUDE_CODE_PLUGIN_DIRS`, loaded.includes(dst), loaded.includes(dst) ? undefined : dst)
+  }
+  const backups = fs.existsSync(path.join(claudeDir, 'backups')) ? fs.readdirSync(path.join(claudeDir, 'backups')).filter(d => d.startsWith('pre-sync-')) : []
+  chk('a pre-sync backup exists', backups.length > 0, backups.at(-1))
+  chk('no unexpected leftovers', mismatches.length === 0, mismatches.length ? `${mismatches.length} item(s)` : undefined)
+  console.log(JSON.stringify({ mode, counts, checks, mismatches, intentionallyKept, needsUser }, null, 2))
+  process.exit(mismatches.length || checks.some(c => !c.ok) ? 2 : 0)
 }
 
 // ---------------------------------------------------------------- backup

@@ -31,6 +31,37 @@ Everything that is not a plain Claude Code command needs written instructions so
 
 Use this shape per item: `## <name>` / what and why / commands (one block, in order) / verify / needs user (login, secret, confirmation). Verify every command against what is actually installed; do not invent steps.
 
-## 3. Report
+## 3. Verify (do not skip)
 
-Tell the user the folder path, what was captured, the redacted secrets, and that the folder can be moved to another machine (USB, cloud drive, private repo) before running `/setup-sync:pull`. Warn that the folder contains personal config: do not put it in a public repo.
+```
+node "${CLAUDE_PLUGIN_ROOT}/scripts/verify.mjs" --dir "<folder>"
+```
+
+It re-exports the machine into a temp folder and diffs it against the snapshot, scans the snapshot for secret-looking values (pattern names only), and checks `externals.md`. Exit code 2 means something is wrong. Act on the output before reporting:
+
+- `differences`: something changed since the export or was not captured. Re-run step 1 (and update `externals.md` if needed), then verify again.
+- `possibleSecrets`: find the value in the named file, remove or redact it, and verify again. Never print the matched text.
+- `unmentionedInventory`: tools found on the machine that `externals.md` does not mention. Add them, or tell the user you left them out on purpose.
+- `externals.md` check failed: write it.
+
+Also confirm by hand what the script cannot see: every command in `externals.md` was checked against the machine, and every `statusLine`/hook command with an absolute path is flagged.
+
+## 4. Report and checklist
+
+Write `<folder>/push-report.md` and show the same content to the user:
+
+```
+# Setup Sync, push report (<date>, <OS>)
+## Synced        counts by kind (marketplaces, plugins, MCP servers, skills, agents, commands, styles, themes, workflows, mods, settings entries, externals documented)
+## Not synced    each item, why (not syncable / redacted secret / failed), and how to fix it
+## Needs you     secrets to re-enter, logins, decisions
+## Checklist
+- [x] snapshot written and manifest valid
+- [x] snapshot matches this machine (verify: no differences)
+- [x] no secret-looking values in the snapshot
+- [x] externals.md written; every external tool documented with a verified command
+- [x] hooks/statusLine with machine-specific paths flagged
+- [x] mods copied, their dependencies documented
+```
+
+Tick a box only with evidence from the verify output or a command you ran; otherwise leave it `[ ]` with the reason. End with the folder path, a reminder that it can be moved to another machine (USB, cloud drive, private repo) before `/setup-sync:pull`, and a warning that it holds personal config: never put it in a public repo.
