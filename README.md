@@ -171,6 +171,7 @@ A box is ticked only if a verification output or a command backs it up. Anything
 
 - **Secrets are never written to the snapshot.** Any `env` or `headers` value whose key looks like a secret (`key`, `token`, `secret`, `password`, `auth`, `credential`) becomes `<REDACTED>`. Items containing one are never written or overwritten on pull: they are listed so you add them by hand, and an existing local value is kept.
 - **Redaction is name-based, so review the snapshot** (`manifest.json`) before sharing it anywhere. A token stuffed into a command-line argument or an oddly-named variable won't be caught.
+- **A snapshot is code, only pull ones you trust.** Pulling installs plugins from the marketplaces it lists, registers MCP servers (which run commands) and follows the shell instructions in `externals.md`. Claude shows you the commands and asks for one confirmation before running them, but a folder taken from a stranger, or from a shared drive someone else can write to, can still be hostile. Read `manifest.json` and `externals.md` first.
 - **Treat the folder as private.** It lists your tools, paths and configuration. Don't push it to a public repo.
 - **Pull is reversible.** Everything is backed up to `~/.claude/backups/pre-sync-<timestamp>/` before any change, and nothing is removed unless you pick *replace* (after seeing the list) or answer *remove* in *ask* mode.
 - **The agent asks first** before logins, secrets, `curl | sh` installers and system-wide installs, and skips an instruction rather than guess when it looks stale.
