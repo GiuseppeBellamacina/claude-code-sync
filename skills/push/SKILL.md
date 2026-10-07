@@ -1,8 +1,8 @@
 ---
 name: push
-description: Save this machine's personal Claude Code setup (settings, plugins, MCP, skills, agents, hooks, LSP) into a local sync folder, plus instructions for the external tools. Use when the user runs /setup-sync:push.
+description: Save this machine's personal Claude Code setup (settings, plugins, MCP, skills, agents, hooks, LSP) into a local sync folder, plus instructions for the external tools; with --cloud also upload everything as one private Claude Artifact, so no USB stick or file transfer is needed. Use when the user runs /setup-sync:push.
 disable-model-invocation: true
-argument-hint: "[folder] [what to sync or skip, in plain words] [--exclude <sel>] [--only <sel>] [--add <path>]"
+argument-hint: "[folder] [--cloud] [what to sync or skip, in plain words] [--exclude <sel>] [--only <sel>] [--add <path>]"
 ---
 
 # Sync push
@@ -13,6 +13,7 @@ Target folder: `$ARGUMENTS` if given, otherwise `~/.claude-sync`.
 
 `$ARGUMENTS` may hold, besides the folder, a request in plain words, in any language: *"everything except MCP"*, *"only plugins and settings"*, *"skip hooks and my CLAUDE.md"*, *"also include ~/.gitconfig and ~/notes"*, *"also note that I use ripgrep"*. Turn it into flags for the scripts:
 
+- `--cloud` (or *"upload it"*, *"save it online"*): after the snapshot is verified, also publish it as an Artifact (step 5). It does not change what is synced.
 - leave something out: `--exclude <selectors>`; sync only some things: `--only <selectors>`; add files or folders outside `~/.claude`: `--add <path>` (repeatable; only paths inside the home folder).
 - Categories: `plugins`, `marketplaces`, `mcp`, `settings` (top-level setting names), `hooks`, `skills`, `agents`, `commands`, `output-styles`, `themes`, `workflows`, `mods`, `claude-md`, `keybindings`, `extra`. A selector is a category or `category:name` for one item (`mcp:docs-langchain`, `plugin:ponytail`, `settings:theme`, `agents:reviewer.md`).
 - What flags cannot express is yours to handle: an extra tool or command to install goes into `externals.md`; "don't document external tools" means skip step 2 and say so in the report.
@@ -79,6 +80,22 @@ Write `<folder>/push-report.md` with the full detail below, then show the user t
 ```
 
 Tick a box only with evidence from the verify output or a command you ran; otherwise leave it `[ ]` with the reason.
+
+## 5. Upload as an Artifact (only with `--cloud`)
+
+The whole snapshot (`manifest.json`, `externals.md`, `push-report.md`, every file under `files/`) becomes ONE self-contained HTML page. Do this after steps 3 and 4, so the page carries the verified `externals.md` and the report.
+
+1. Pack it. Write the page into your scratchpad directory (or the working directory), never into the sync folder:
+   ```
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/pack.mjs" --dir "<folder>" --out "<scratchpad>/setup-sync-snapshot.html"
+   ```
+   If it refuses because the page would exceed the Artifact size limit, show the largest files it lists and offer to push again with `--exclude` for them. Do not try to trim anything yourself.
+2. Look for an earlier snapshot: `Artifact` with `action: "list"` and a title of `Setup Sync Snapshot`. If one exists, update it in place (read it first, as the tool requires, then publish with its `url`) so there is a single copy online; tell the user you replaced the old one.
+3. Otherwise publish with `Artifact` (`file_path` = the packed page, `icon: "sync"`, `description`: one sentence with the date and the source OS). The page is private to the user's account by default; do not make it shared or public, and never publish it anywhere else.
+4. Give the user the artifact link and the one-line next step: on the other machine run `/setup-sync:pull --cloud` (or pass the link: `/setup-sync:pull --cloud <link>`). Remind them it holds their personal configuration (secrets are redacted), and that they can ask you to delete it once the pull is done.
+
+Add a row to the chat report: `Artifact | ✅ published <link>` (or ⚠️/❌ with the reason). Never tick it without the publish result.
+
 ### Chat format (what the user reads)
 
 The file is the full record; in chat give a compact, scannable version, not the file pasted. Use this shape, omitting any block that would be empty:
@@ -108,4 +125,4 @@ The file is the full record; in chat give a compact, scannable version, not the 
 
 Rules: status emoji ✅ ⚠️ ❌ only; counts live in the table, not in prose; one line per issue, always with its fix; list kinds that have nothing in a single line ("None on this machine: skills, agents, mods"); never ✅ for something not verified (use ⚠️ and say why); no paragraphs, no repeating the checklist verbatim, end with the file path of the full report.
 
-End with the folder path, a reminder that it can be moved to another machine (USB, cloud drive, private repo) before `/setup-sync:pull`, and a warning that it holds personal config: never put it in a public repo.
+End with the folder path, a reminder that it can be moved to another machine (USB, cloud drive, private repo, or `--cloud` for a private Artifact) before `/setup-sync:pull`, and a warning that it holds personal config: never put it in a public repo.

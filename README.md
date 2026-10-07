@@ -14,6 +14,7 @@ Claude Code has [no native way to sync your configuration across machines](https
 /setup-sync:push
 
 # ...copy the folder (USB stick, cloud drive, private repo)...
+# ...or skip that: /setup-sync:push --cloud  ->  /setup-sync:pull --cloud
 
 # new machine
 /setup-sync:pull
@@ -92,6 +93,8 @@ redacted secrets (set again by hand on the new machine): mcp.my-server.env.API_K
 
 Anything works: a USB stick, a synced cloud folder, a **private** git repo. The folder contains your personal configuration — see [Security](#security).
 
+Or let Claude carry it: [`--cloud`](#cloud-no-usb-stick) uploads the whole folder as one private Claude Artifact and downloads it again on the new machine.
+
 ### 3. Pull (new machine)
 
 Install `setup-sync` on the new machine first (two commands above), then:
@@ -118,6 +121,24 @@ Then Claude works through `externals.md` — installing prerequisites, language 
 Run `/reload-plugins` to apply plugin changes right away; new MCP servers start with your next session.
 
 More walkthroughs, including a full `externals.md`, are in [docs/examples.md](docs/examples.md). How it works under the hood: [docs/how-it-works.md](docs/how-it-works.md).
+
+## Cloud: no USB stick
+
+Add `--cloud` and the snapshot travels through your claude.ai account instead of a file you have to move:
+
+```text
+# old machine
+/setup-sync:push --cloud
+
+# new machine (same claude.ai account)
+/setup-sync:pull --cloud
+```
+
+- **Push** verifies the snapshot as usual, then packs *everything* (`manifest.json`, `externals.md`, `push-report.md`, every file under `files/`) into **one self-contained HTML page** and publishes it as an Artifact called `Setup Sync Snapshot`. The page is also a readable view of the snapshot: what it contains, what needs you, the install instructions. A second push updates the same Artifact instead of piling up copies.
+- **Pull** finds the Artifact (or takes its link: `/setup-sync:pull --cloud <link>`), downloads the page, rebuilds the sync folder from it and runs the normal pull. Every file is checked against its checksum and paths that could escape the folder are refused.
+- **Clean up:** at the end of the pull Claude offers to delete the local folder *and* the Artifact. Nothing is deleted without an explicit yes.
+- **Limits:** an Artifact holds 16 MB, so a snapshot with large mods or `--add` folders can be too big; the push says which files are the heaviest so you can `--exclude` them. It needs the Artifact tool in Claude Code on both machines.
+- **Privacy:** an Artifact is private to your account unless you share it, and secrets are redacted before anything is packed. It is still your personal configuration: do not share the link.
 
 ## Platform notes (Windows, macOS, Linux)
 

@@ -1,6 +1,6 @@
 # How it works
 
-`setup-sync` is a regular Claude Code plugin: two skills (`push`, `pull`) and three zero-dependency Node scripts. It is **not** a mod and registers no hooks, so it does nothing until you invoke a command.
+`setup-sync` is a regular Claude Code plugin: two skills (`push`, `pull`) and zero-dependency Node scripts. It is **not** a mod and registers no hooks, so it does nothing until you invoke a command.
 
 ```text
 setup-sync/
@@ -14,6 +14,8 @@ setup-sync/
     ├── select.mjs          # --exclude / --only selectors shared by the scripts
     ├── common.mjs          # cross-platform helpers (paths, copy, OS warnings)
     ├── verify.mjs          # push verification
+    ├── pack.mjs            # --cloud: snapshot folder -> one HTML page (Artifact)
+    ├── unpack.mjs          # --cloud: that page -> snapshot folder
     └── apply.mjs           # deterministic restore (+ --plan, --verify)
 ```
 
@@ -78,6 +80,14 @@ Then the script applies the result in a fixed order:
 ### Settings
 
 Settings are resolved entry by entry (see the status table), so a conflict on `env.FOO` never affects `env.BAR`. Arrays and other values are replaced as a whole. In `replace` mode local-only entries are deleted and emptied objects are cleaned up.
+
+## Cloud transport (`--cloud`)
+
+The Artifact is only a transport for the sync folder; `apply.mjs` never knows about it.
+
+- **`scripts/pack.mjs`** walks the snapshot folder and writes one HTML page (a fragment: the Artifact publisher adds `<html>`, `<head>` and `<body>`). Every file, including `externals.md` and `push-report.md`, goes into a `<script type="application/json" id="setup-sync-data">` block as `{path, size, sha256, encoding, data, exec?}`: valid UTF-8 is stored as text, anything else as base64. `<` is escaped as `\u003c`, so file content cannot close the script tag. A small inline script renders the same data for humans (counts, secrets to re-enter, install instructions, every file in a collapsible block, a copy button for the pull command). It refuses pages above 12 MB (the Artifact limit is 16 MB) and lists the largest files.
+- **`scripts/unpack.mjs`** reads that block back. Before writing anything it checks the format version, that every path is `manifest.json`, `externals.md`, `push-report.md` or under `files/` with no `..`, `.`, empty parts, `\` or `:`, and that size and SHA-256 match. It only replaces a folder that already is a snapshot, restores the executable bit and prints a summary.
+- The skills do the Artifact calls: push lists/publishes/updates (title `Setup Sync Snapshot`, private), pull lists/reads (`path: "index.html"`) and, on the user's yes, deletes it after the pull.
 
 ## Cross-platform helpers
 

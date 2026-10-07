@@ -1,13 +1,26 @@
 ---
 name: pull
-description: Restore a personal Claude Code setup from a local sync folder created by push, on a new OR an already configured machine (overwrite, replace everything, or ask item by item), then run the external-tool instructions. Use when the user runs /setup-sync:pull.
+description: Restore a personal Claude Code setup from a local sync folder created by push (or, with --cloud, from the Artifact that push published), on a new OR an already configured machine (overwrite, replace everything, or ask item by item), then run the external-tool instructions. Use when the user runs /setup-sync:pull.
 disable-model-invocation: true
-argument-hint: "[folder] [--overwrite | --replace | --ask] [what to restore or skip, in plain words] [--exclude <sel>] [--only <sel>]"
+argument-hint: "[folder] [--cloud [artifact-link]] [--overwrite | --replace | --ask] [what to restore or skip, in plain words] [--exclude <sel>] [--only <sel>]"
 ---
 
 # Sync pull
 
-Parse `$ARGUMENTS`: an optional folder (default `~/.claude-sync`) and an optional mode flag. If the folder has no `manifest.json`, stop and say so. In the commands below `<script>` is `${CLAUDE_PLUGIN_ROOT}/scripts/apply.mjs` (if `${CLAUDE_PLUGIN_ROOT}` was not expanded, it is under `~/.claude/plugins/cache/cosmic-plugins/setup-sync/`).
+Parse `$ARGUMENTS`: an optional folder (default `~/.claude-sync`), an optional mode flag and an optional `--cloud [artifact-link]`. With `--cloud`, do the cloud fetch below first. If the folder has no `manifest.json`, stop and say so. In the commands below `<script>` is `${CLAUDE_PLUGIN_ROOT}/scripts/apply.mjs` (if `${CLAUDE_PLUGIN_ROOT}` was not expanded, it is under `~/.claude/plugins/cache/cosmic-plugins/setup-sync/`).
+
+## Before step 0: fetch the snapshot from the cloud (only with `--cloud`)
+
+The push published the whole snapshot as one HTML page (an Artifact titled `Setup Sync Snapshot`). Rebuild the folder from it:
+
+1. Find it: use the link in the arguments, or `Artifact` with `action: "list"` and look for the title `Setup Sync Snapshot`. If there are several, ask which one (show the last-updated times). If there is none, say so and stop; the push must be run with `--cloud` first.
+2. Download it: `Artifact` with `action: "read"`, the `url`, and `path: "index.html"`. It saves the page to a local file and tells you where. (If the result names a saved file for the full page instead, use that.)
+3. Unpack it into the sync folder:
+   ```
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/unpack.mjs" --html "<saved page>" --dir "<folder>"
+   ```
+   It checks every file against its checksum, refuses paths that could escape the folder and refuses to overwrite a folder that is not a previous snapshot. It prints what it restored. On any error stop and report it; do not edit the page by hand.
+4. Continue with step 0 using that folder (the `<script>` of the later steps is still `apply.mjs`). The page is the user's own snapshot, but it still carries shell instructions: step 4 applies as usual.
 
 ## 0. Understand what the user asked
 
@@ -148,4 +161,4 @@ Remind that `/reload-plugins` applies plugin changes now, but new MCP servers an
 
 ## 7. Clean up
 
-Ask whether to delete the sync folder. Delete it only after an explicit yes, only the exact folder used, and keep it if anything is under *Not synced* or *Needs you* so the pull can be re-run. The backup folder in `~/.claude/backups/` (which holds the report) is separate and is never deleted by this skill.
+Ask whether to delete the sync folder; with `--cloud`, also ask whether to delete the Artifact that held the snapshot (`Artifact` with `action: "delete"` and its `url`, only after an explicit yes, and say that the link stops working for everyone). Delete only after an explicit yes, only the exact folder used, and keep it if anything is under *Not synced* or *Needs you* so the pull can be re-run. The backup folder in `~/.claude/backups/` (which holds the report) is separate and is never deleted by this skill.
