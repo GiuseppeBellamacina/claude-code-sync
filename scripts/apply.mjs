@@ -149,7 +149,7 @@ for (const d of top) {
   const src = path.join(files, d)
   if (fs.statSync(src).isFile()) { fileItem(`file:${d}`, 'file', src, path.join(claudeDir, d)); continue }
   const base = d === 'mods' ? path.join(claudeDir, 'mods') : path.join(claudeDir, d)
-  for (const e of fs.readdirSync(src)) fileItem(`${d}/${e}`, d === 'mods' ? 'mod' : 'file', path.join(src, e), path.join(base, e), d === 'mods')
+  for (const e of fs.readdirSync(src).filter(x => !x.startsWith('.'))) fileItem(`${d}/${e}`, d === 'mods' ? 'mod' : 'file', path.join(src, e), path.join(base, e), d === 'mods')
 }
 for (const f of ['CLAUDE.md', 'keybindings.json'])
   if (!top.includes(f) && fs.existsSync(path.join(claudeDir, f))) fileItem(`file:${f}`, 'file', null, path.join(claudeDir, f))
@@ -157,7 +157,7 @@ for (const d of MANAGED) {
   const local = path.join(claudeDir, d)
   const inSnap = fs.existsSync(path.join(files, d)) ? fs.readdirSync(path.join(files, d)) : []
   if (fs.existsSync(local)) for (const e of fs.readdirSync(local))
-    if (!inSnap.includes(e) && !(d === 'skills' && SKIP_SKILL.test(e)) && !e.endsWith('.synced'))
+    if (!e.startsWith('.') && !inSnap.includes(e) && !(d === 'skills' && SKIP_SKILL.test(e)) && !e.endsWith('.synced'))
       fileItem(`${d}/${e}`, d === 'mods' ? 'mod' : 'file', null, path.join(local, e), d === 'mods')
 }
 

@@ -81,6 +81,7 @@ for (const d of ['skills', 'agents', 'commands', 'output-styles', 'themes', 'wor
   const src = path.join(claudeDir, d)
   if (!fs.existsSync(src)) continue
   for (const e of fs.readdirSync(src)) {
+    if (e.startsWith('.')) continue // dot-folders are app internals (.trash...), never user content
     if (d === 'skills' && SKIP_SKILL.test(e)) continue
     if (!sel.allowed(d, e)) continue
     if (safeCopy(path.join(src, e), path.join(out, 'files', d, e))) copied.push(`${d}/${e}`)
